@@ -1,0 +1,39 @@
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: #f4f7fb;
+  color: #1f2937;
+}
+
+.card {
+  width: min(100%, 680px);
+  background: #ffffff;
+  border: 1px solid #dbe3ee;
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+}
+
+.card h1 {
+  margin: 0 0 12px;
+  font-size: 2rem;
+  line-height: 1.2;
+}
+
+.subtitle {
+  margin: 0 0 20px;
+  line-height: 1.6;
+  color: #4b5563;
+}
+
+.status-line {
+  margin: 0;
+  padding: 14px 16px;
+  background: #eef5ff;
+  border: 1px solid #cfe0ff;
+  border-radius: 10px;
+  font-weight: 600;
+}
