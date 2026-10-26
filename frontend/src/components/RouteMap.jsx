@@ -1,5 +1,6 @@
 import { memo, useEffect, useMemo } from 'react'
 import { CircleMarker, MapContainer, Pane, Polyline, Popup, TileLayer, Tooltip, useMap } from 'react-leaflet'
+import HeatmapLayer from './HeatmapLayer'
 import { formatDateTime } from '../utils/format'
 import { getRiskInfo, getRiskRadius } from '../utils/risk'
 
@@ -121,7 +122,7 @@ const SelectedRouteMarkers = memo(function SelectedRouteMarkers({ route, originT
   )
 })
 
-const RouteMap = memo(function RouteMap({ routes, selectedRouteId, onSelect, originTimezone }) {
+const RouteMap = memo(function RouteMap({ routes, selectedRouteId, onSelect, originTimezone, heatmap, selectedHour }) {
   const selectedRoute = useMemo(() => {
     return routes.find((route) => route.route_id === selectedRouteId) || routes[0] || null
   }, [routes, selectedRouteId])
@@ -156,6 +157,7 @@ const RouteMap = memo(function RouteMap({ routes, selectedRouteId, onSelect, ori
           <Pane name="checkpoints" style={{ zIndex: 450 }} />
 
           {bounds ? <FitBounds bounds={bounds} /> : null}
+          {heatmap ? <HeatmapLayer heatmap={heatmap} selectedHour={selectedHour} /> : null}
 
           {routeLines.map(({ route, positions }) => {
             const isSelected = route.route_id === selectedRoute?.route_id

@@ -742,6 +742,128 @@
   padding: 16px;
 }
 
+.heatmap-panel {
+  margin-top: 24px;
+  padding: 20px;
+  border: 1px solid #dbe3ee;
+  border-radius: 16px;
+  background: #ffffff;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
+}
+
+.heatmap-panel-header {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.heatmap-panel-subtitle {
+  margin: 6px 0 0;
+  color: #6b7280;
+}
+
+.heatmap-demo-banner {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+  color: #9a3412;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.heatmap-panel-message {
+  margin: 16px 0 0;
+  color: #374151;
+}
+
+.heatmap-panel-error {
+  color: #b91c1c;
+}
+
+.heatmap-controls {
+  margin-top: 16px;
+}
+
+.heatmap-slider-label {
+  display: block;
+  margin-bottom: 10px;
+  font-weight: 600;
+}
+
+.heatmap-slider {
+  width: 100%;
+  accent-color: #2563eb;
+  background: linear-gradient(to right, rgba(37, 99, 235, 0.18) 0, rgba(37, 99, 235, 0.18) var(--trip-pct, 0%), #e5e7eb var(--trip-pct, 0%), #e5e7eb 100%);
+}
+
+.heatmap-slider-scale {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  margin-top: 10px;
+  color: #6b7280;
+  font-size: 0.9rem;
+}
+
+.heatmap-slider-scale span:nth-child(2) {
+  justify-self: center;
+}
+
+.heatmap-slider-scale span:last-child {
+  justify-self: end;
+}
+
+.heatmap-hour-label {
+  margin: 12px 0 0;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.heatmap-phase-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #1d4ed8;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.heatmap-summary-list {
+  list-style: none;
+  margin: 16px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+}
+
+.heatmap-summary-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.heatmap-summary-item:last-child {
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.heatmap-summary-item-muted {
+  color: #6b7280;
+}
+
 .map-wrapper {
   overflow: hidden;
   border-radius: 12px;

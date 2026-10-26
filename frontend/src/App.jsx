@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import './App.css'
-import { analyze, health } from './api/client'
+import { analyze, health, heatmap } from './api/client'
+import HeatmapPanel from './components/HeatmapPanel'
 import RiskLegend from './components/RiskLegend'
 import RouteCards from './components/RouteCards'
 import RouteMap from './components/RouteMap'
@@ -11,8 +12,13 @@ function App() {
   const [loading, setLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
   const [result, setResult] = useState(null)
+  const [heatmapData, setHeatmapData] = useState(null)
+  const [heatmapLoading, setHeatmapLoading] = useState(false)
+  const [heatmapError, setHeatmapError] = useState('')
+  const [hourState, setHourState] = useState({ startTime: null, hour: 0 })
   const [selectedRouteId, setSelectedRouteId] = useState(null)
   const analyzeControllerRef = useRef(null)
+  const heatmapRequestRef = useRef({ controller: null, requestId: 0 })
 
   useEffect(() => {
     const controller = new AbortController()
@@ -48,13 +54,58 @@ function App() {
       if (analyzeControllerRef.current) {
         analyzeControllerRef.current.abort()
       }
+
+      if (heatmapRequestRef.current.controller) {
+        heatmapRequestRef.current.controller.abort()
+      }
     }
   }, [])
+
+  function startHeatmapRequest(payload) {
+    if (heatmapRequestRef.current.controller) {
+      heatmapRequestRef.current.controller.abort()
+    }
+
+    const controller = new AbortController()
+    const requestId = heatmapRequestRef.current.requestId + 1
+    heatmapRequestRef.current = { controller, requestId }
+
+    setHeatmapLoading(true)
+    setHeatmapError('')
+
+    heatmap({ ...payload, hours: 48 }, { signal: controller.signal })
+      .then((data) => {
+        if (heatmapRequestRef.current.requestId !== requestId) {
+          return
+        }
+
+        setHeatmapData(data)
+      })
+      .catch((error) => {
+        if (error.name === 'AbortError' || heatmapRequestRef.current.requestId !== requestId) {
+          return
+        }
+
+        setHeatmapError(error.message || 'Unable to load the forecast heatmap right now.')
+      })
+      .finally(() => {
+        if (heatmapRequestRef.current.requestId === requestId) {
+          setHeatmapLoading(false)
+          heatmapRequestRef.current = { controller: null, requestId }
+        }
+      })
+  }
 
   async function handleTripSubmit(payload) {
     if (analyzeControllerRef.current) {
       analyzeControllerRef.current.abort()
     }
+
+    if (heatmapRequestRef.current.controller) {
+      heatmapRequestRef.current.controller.abort()
+    }
+
+    heatmapRequestRef.current = { controller: null, requestId: heatmapRequestRef.current.requestId + 1 }
 
     const controller = new AbortController()
     analyzeControllerRef.current = controller
@@ -62,12 +113,17 @@ function App() {
     setLoading(true)
     setErrorMessage('')
     setResult(null)
+    setHeatmapData(null)
+    setHeatmapLoading(false)
+    setHeatmapError('')
+    setHourState({ startTime: null, hour: 0 })
     setSelectedRouteId(null)
 
     try {
       const data = await analyze(payload, { signal: controller.signal })
       setResult(data)
       setSelectedRouteId(data.recommended_route_id || data.routes?.[0]?.route_id || null)
+      startHeatmapRequest(payload)
     } catch (error) {
       if (error.name === 'AbortError') {
         return
@@ -81,6 +137,8 @@ function App() {
       }
     }
   }
+
+  const selectedHour = hourState.startTime === heatmapData?.start_time ? hourState.hour : 0
 
   return (
     <main className="app-shell">
@@ -109,8 +167,26 @@ function App() {
                   explanation={result.explanation}
                   originTimezone={result.origin_timezone}
                 />
-                <RouteMap routes={result.routes} selectedRouteId={selectedRouteId} onSelect={setSelectedRouteId} originTimezone={result.origin_timezone} />
+                <RouteMap
+                  routes={result.routes}
+                  selectedRouteId={selectedRouteId}
+                  onSelect={setSelectedRouteId}
+                  originTimezone={result.origin_timezone}
+                  heatmap={heatmapData}
+                  selectedHour={selectedHour}
+                />
               </div>
+
+              <HeatmapPanel
+                key={heatmapData?.start_time ?? 'none'}
+                heatmap={heatmapData}
+                loading={heatmapLoading}
+                error={heatmapError}
+                originTimezone={result.origin_timezone}
+                tripDurationSeconds={result.routes.find((route) => route.is_recommended)?.duration_seconds ?? null}
+                selectedHour={selectedHour}
+                onHourChange={(hour) => setHourState({ startTime: heatmapData?.start_time ?? null, hour })}
+              />
             </section>
           ) : (
             <div className="message-box success-box">No routes were found for this trip.</div>
