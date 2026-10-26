@@ -29,10 +29,10 @@ VIA_MAX_LENGTH_RATIO: float = 1.35
 VIA_MAX_SNAP_MILES: float = 10.0
 DISTINCT_OVERLAP_LIMIT: float = 0.70
 OVERLAP_RADIUS_MILES: float = 2.0
-VIA_OFFSET_PRIMARY_RATIO: float = 0.12
-VIA_OFFSET_SECONDARY_RATIO: float = 0.20
-VIA_OFFSET_MIN_MILES: float = 15.0
-VIA_OFFSET_MAX_MILES: float = 60.0
+VIA_OFFSET_PRIMARY_RATIO: float = 0.05
+VIA_OFFSET_SECONDARY_RATIO: float = 0.08
+VIA_OFFSET_MIN_MILES: float = 5.0
+VIA_OFFSET_MAX_MILES: float = 15.0
 MAX_OVERLAP_POINTS: int = 200
 GRID_CELL_SIZE_DEGREES: float = 0.1
 USER_AGENT: str = "spotter-weather-routing/1.0"
@@ -120,7 +120,7 @@ def offset_point(lat: float, lon: float, bearing_degrees: float, miles: float) -
     _validate_coordinate((lat, lon), "point")
 
     angular_distance = miles / EARTH_RADIUS_MILES
-    bearing = radians(bearing_degrees)
+    bearing = radians(bearing_degrees % 360.0)
     start_lat = radians(lat)
     start_lon = radians(lon)
 
@@ -430,15 +430,37 @@ def _candidate_waypoints(base_route: Route) -> list[tuple[float, float]]:
 
     midpoint_miles = base_route.distance_miles / 2.0
     midpoint, segment = _point_at_miles(base_route.coordinates, midpoint_miles)
-    bearing = _initial_bearing(segment[0], segment[1])
-    perpendiculars = ((bearing + 90.0) % 360.0, (bearing - 90.0) % 360.0)
+    start, end = segment
+    delta_lat = end[0] - start[0]
+    delta_lon = (end[1] - start[1]) * cos(radians((start[0] + end[0]) / 2.0))
+    normal_lat = -delta_lon
+    normal_lon = delta_lat
+    magnitude = sqrt((normal_lat * normal_lat) + (normal_lon * normal_lon))
+    if magnitude == 0.0:
+        return []
+
+    unit_normal_lat = normal_lat / magnitude
+    unit_normal_lon = normal_lon / magnitude
+    miles_per_lat_degree = 69.0
+    miles_per_lon_degree = max(1e-6, 69.0 * cos(radians(midpoint[0])))
 
     waypoints: list[tuple[float, float]] = []
     for ratio in (VIA_OFFSET_PRIMARY_RATIO, VIA_OFFSET_SECONDARY_RATIO):
         miles = _clamp(base_route.distance_miles * ratio, VIA_OFFSET_MIN_MILES, VIA_OFFSET_MAX_MILES)
-        for perpendicular_bearing in perpendiculars:
-            waypoints.append(offset_point(midpoint[0], midpoint[1], perpendicular_bearing, miles))
-    return waypoints
+        lat_offset = (unit_normal_lat * miles) / miles_per_lat_degree
+        lon_offset = (unit_normal_lon * miles) / miles_per_lon_degree
+        waypoints.append((midpoint[0] + lat_offset, midpoint[1] + lon_offset))
+        waypoints.append((midpoint[0] - lat_offset, midpoint[1] - lon_offset))
+
+    deduped_waypoints: list[tuple[float, float]] = []
+    seen: set[tuple[int, int]] = set()
+    for lat, lon in waypoints:
+        key = (round(lat, 6), round(lon, 6))
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped_waypoints.append((lat, lon))
+    return deduped_waypoints
 
 
 def get_routes(
@@ -481,7 +503,11 @@ def get_routes(
                     continue
                 candidate = candidate_routes[0]
             except RoutingServiceError as exc:
-                logger.warning("Optional generated via route failed: %s", exc)
+                logger.warning(
+                    "Optional generated via route failed (osrm_code=%s): %s",
+                    payload.get("code") if "payload" in locals() and isinstance(payload, dict) else None,
+                    exc,
+                )
                 continue
 
             if _snap_distance_miles(payload, 1) > VIA_MAX_SNAP_MILES:

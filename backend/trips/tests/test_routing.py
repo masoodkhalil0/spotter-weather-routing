@@ -12,7 +12,12 @@ from trips.services.routing import (
     TRUCK_SPEED_FACTOR,
     Route,
     RoutingServiceError,
+    VIA_OFFSET_MAX_MILES,
+    VIA_OFFSET_MIN_MILES,
+    _point_at_miles,
+    _candidate_waypoints,
     get_routes,
+    haversine_miles,
     offset_point,
     point_at_fraction,
     route_overlap,
@@ -273,7 +278,7 @@ class RoutingTests(SimpleTestCase):
         routes = get_routes(self.origin, self.destination, count=3)
 
         self.assertEqual(len(routes), 2)
-        self.assertEqual(mock_get.call_count, 5)
+        self.assertEqual(mock_get.call_count, 3)
         self.assertTrue(all(not route.is_generated for route in routes))
 
     @patch("trips.services.routing.sleep", return_value=None)
@@ -306,7 +311,7 @@ class RoutingTests(SimpleTestCase):
         routes = get_routes(self.origin, self.destination, count=3)
 
         self.assertEqual(len(routes), 1)
-        self.assertEqual(mock_get.call_count, 5)
+        self.assertEqual(mock_get.call_count, 3)
 
     @patch("trips.services.routing.sleep", return_value=None)
     @patch("trips.services.routing.requests.get")
@@ -358,6 +363,51 @@ class RoutingTests(SimpleTestCase):
         self.assertAlmostEqual(north[0], 1.0, delta=0.1)
         self.assertAlmostEqual(midpoint[0], 5.0, delta=0.1)
         self.assertAlmostEqual(midpoint[1], 5.0, delta=0.1)
+
+    def test_candidate_waypoints_use_opposite_sides_not_duplicates(self) -> None:
+        base_route = Route(
+            route_id="base",
+            coordinates=((41.8781, -87.6298), (32.7767, -96.7970)),
+            distance_miles=200.0,
+            duration_seconds=1000.0,
+            is_generated=False,
+        )
+
+        waypoints = _candidate_waypoints(base_route)
+
+        self.assertEqual(len(waypoints), 4)
+        self.assertEqual(len(set((round(lat, 6), round(lon, 6)) for lat, lon in waypoints)), 4)
+
+    def test_candidate_waypoints_deduplicate_when_offsets_clamp_to_same_distance(self) -> None:
+        base_route = Route(
+            route_id="base",
+            coordinates=((41.8781, -87.6298), (32.7767, -96.7970)),
+            distance_miles=1000.0,
+            duration_seconds=1000.0,
+            is_generated=False,
+        )
+
+        waypoints = _candidate_waypoints(base_route)
+
+        self.assertEqual(len(waypoints), 2)
+        self.assertEqual(len(set((round(lat, 6), round(lon, 6)) for lat, lon in waypoints)), 2)
+
+    def test_candidate_waypoint_offsets_are_capped_to_smaller_range(self) -> None:
+        base_route = Route(
+            route_id="base",
+            coordinates=((41.8781, -87.6298), (32.7767, -96.7970)),
+            distance_miles=1000.0,
+            duration_seconds=1000.0,
+            is_generated=False,
+        )
+
+        waypoints = _candidate_waypoints(base_route)
+        midpoint, _ = _point_at_miles(base_route.coordinates, base_route.distance_miles / 2.0)
+        distances = [haversine_miles(midpoint, waypoint) for waypoint in waypoints]
+
+        self.assertTrue(all(distance >= VIA_OFFSET_MIN_MILES - 0.5 for distance in distances))
+        self.assertTrue(all(distance <= VIA_OFFSET_MAX_MILES + 0.5 for distance in distances))
+        self.assertGreaterEqual(len({round(distance, 1) for distance in distances}), 1)
 
     @patch("trips.services.routing.sleep", return_value=None)
     @patch("trips.services.routing.requests.get")
