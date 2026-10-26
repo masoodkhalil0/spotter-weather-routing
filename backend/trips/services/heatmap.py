@@ -7,7 +7,8 @@ from math import floor
 from typing import Sequence
 
 from trips.services.checkpoints import polyline_length_miles
-from trips.services.risk import assess_risk
+from trips.services.demo import apply_demo_weather, is_demo_mode_active
+from trips.services.risk import WeatherConditions, assess_risk
 from trips.services.routing import Route
 from trips.services.weather import WeatherServiceError, conditions_at, fetch_forecasts
 
@@ -142,6 +143,7 @@ def build_heatmap(
     _validate_hours(hours)
     _validate_max_points(max_points)
 
+    demo_mode_active = is_demo_mode_active()
     points = _corridor_points(routes, max_points=max_points)
     start_time = _round_hour_down(departure)
     end_time = start_time + timedelta(hours=hours)
@@ -152,7 +154,9 @@ def build_heatmap(
     )
 
     serialized_points: list[dict[str, object]] = []
-    for point, forecast in zip(points, forecasts, strict=True):
+    total_distance = max((route.distance_miles for route in routes), default=0.0)
+    last_point_index = len(points) - 1
+    for point_index, (point, forecast) in enumerate(zip(points, forecasts, strict=True)):
         levels: list[int | None] = []
         wind_values: list[float | None] = []
         rain_values: list[float | None] = []
@@ -168,6 +172,18 @@ def build_heatmap(
                 rain_values.append(None)
                 snow_values.append(None)
                 continue
+
+            if demo_mode_active:
+                mile_marker = 0.0 if last_point_index <= 0 else (total_distance * point_index / last_point_index)
+                conditions = WeatherConditions(**apply_demo_weather(
+                    {
+                        "wind_mph": conditions.wind_mph,
+                        "rain_in_hr": conditions.rain_in_hr,
+                        "snow_in_hr": conditions.snow_in_hr,
+                    },
+                    mile_marker,
+                    hour_offset,
+                ))
 
             assessment = assess_risk(conditions, load_weight_lb)
             levels.append(int(assessment.level))
@@ -186,7 +202,7 @@ def build_heatmap(
             }
         )
 
-    return {
+    result = {
         "departure": _iso_utc(departure),
         "origin_timezone": origin_timezone,
         "hours": hours,
@@ -195,3 +211,6 @@ def build_heatmap(
         "level_names": LEVEL_NAMES,
         "points": serialized_points,
     }
+    if demo_mode_active:
+        result["demo_mode"] = True
+    return result

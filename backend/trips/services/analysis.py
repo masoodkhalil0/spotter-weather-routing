@@ -6,8 +6,9 @@ from datetime import datetime, timedelta, timezone
 from typing import Sequence
 
 from trips.services.checkpoints import Checkpoint, choose_interval_miles, generate_checkpoints
+from trips.services.demo import apply_demo_weather, is_demo_mode_active
 from trips.services.recommend import explain_recommendation, rank_routes, summarize_route
-from trips.services.risk import RiskAssessment, RiskLevel, assess_risk
+from trips.services.risk import RiskAssessment, RiskLevel, WeatherConditions, assess_risk
 from trips.services.routing import Route, get_routes
 from trips.services.weather import HourlyForecast, conditions_at, fetch_forecasts
 
@@ -94,11 +95,10 @@ def _serialize_summary(summary: object) -> dict[str, object]:
 def _serialize_checkpoint(
     checkpoint: Checkpoint,
     assessment: RiskAssessment,
-    forecast: HourlyForecast,
+    weather: WeatherConditions,
 ) -> dict[str, object]:
     """Serialize one analyzed checkpoint for API output."""
 
-    weather = conditions_at(forecast, checkpoint.eta)
     return {
         "index": checkpoint.index,
         "mile_marker": round(checkpoint.mile_marker, MILES_ROUND_DIGITS),
@@ -154,8 +154,9 @@ def analyze_trip(
     end_date = latest_eta.astimezone(timezone.utc).date()
     all_forecasts = fetch_forecasts(all_points, start=start_date, end=end_date)
 
+    demo_mode_active = is_demo_mode_active()
     route_assessments: dict[str, list[RiskAssessment]] = {}
-    route_forecasts: dict[str, list[HourlyForecast]] = {}
+    route_conditions: dict[str, list[WeatherConditions]] = {}
     forecast_index = 0
 
     for route in routes:
@@ -163,13 +164,26 @@ def analyze_trip(
         checkpoint_count = len(checkpoints)
         forecasts = all_forecasts[forecast_index : forecast_index + checkpoint_count]
         forecast_index += checkpoint_count
-        route_forecasts[route.route_id] = forecasts
-
         assessments: list[RiskAssessment] = []
+        checkpoint_conditions: list[WeatherConditions] = []
         for checkpoint, forecast in zip(checkpoints, forecasts, strict=True):
             conditions = conditions_at(forecast, checkpoint.eta)
+            if demo_mode_active:
+                hour_offset = int((checkpoint.eta - departure).total_seconds() // 3600)
+                hour_offset = max(0, min(47, hour_offset))
+                conditions = WeatherConditions(**apply_demo_weather(
+                    {
+                        "wind_mph": conditions.wind_mph,
+                        "rain_in_hr": conditions.rain_in_hr,
+                        "snow_in_hr": conditions.snow_in_hr,
+                    },
+                    checkpoint.mile_marker,
+                    hour_offset,
+                ))
+            checkpoint_conditions.append(conditions)
             assessments.append(assess_risk(conditions, load_weight_lb))
         route_assessments[route.route_id] = assessments
+        route_conditions[route.route_id] = checkpoint_conditions
 
     summaries = [
         summarize_route(
@@ -191,7 +205,7 @@ def analyze_trip(
         route = route_by_id[summary.route_id]
         checkpoints = route_checkpoints[route.route_id]
         assessments = route_assessments[route.route_id]
-        forecasts = route_forecasts[route.route_id]
+        conditions = route_conditions[route.route_id]
         serialized_routes.append(
             {
                 "route_id": route.route_id,
@@ -205,18 +219,18 @@ def analyze_trip(
                 "summary": _serialize_summary(summary_by_route_id[route.route_id]),
                 "geometry": _rounded_geometry(route.coordinates),
                 "checkpoints": [
-                    _serialize_checkpoint(checkpoint, assessment, forecast)
-                    for checkpoint, assessment, forecast in zip(
+                    _serialize_checkpoint(checkpoint, assessment, weather)
+                    for checkpoint, assessment, weather in zip(
                         checkpoints,
                         assessments,
-                        forecasts,
+                        conditions,
                         strict=True,
                     )
                 ],
             }
         )
 
-    return {
+    result = {
         "recommended_route_id": ranked_summaries[0].route_id,
         "explanation": explanation,
         "load_weight_lb": float(load_weight_lb),
@@ -224,3 +238,6 @@ def analyze_trip(
         "origin_timezone": origin_timezone,
         "routes": serialized_routes,
     }
+    if demo_mode_active:
+        result["demo_mode"] = True
+    return result

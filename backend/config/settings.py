@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.1/ref/settings/
 """
 
+import logging
 from pathlib import Path
 from decouple import Csv, config
 
@@ -25,6 +26,7 @@ SECRET_KEY = config("SECRET_KEY")
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config("DEBUG", default=False, cast=bool)
+DEMO_MODE = config("DEMO_MODE", default=False, cast=bool)
 
 ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="127.0.0.1,localhost", cast=Csv())
 
@@ -176,6 +178,9 @@ LOGGING = {
         }
     },
 }
+
+if DEMO_MODE and not DEBUG:
+    logging.getLogger("trips").warning("DEMO_MODE is ignored because DEBUG is False.")
 
 # --- Production hardening (only when DEBUG is off) ---
 if not DEBUG:
