@@ -64,7 +64,7 @@ def _validate_load_weight(load_weight_lb: float) -> None:
 def _iso_utc(value: datetime) -> str:
     """Return an ISO-8601 string normalized to UTC."""
 
-    return value.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+    return value.astimezone(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
 def _rounded_geometry(coordinates: Sequence[tuple[float, float]]) -> list[list[float]]:

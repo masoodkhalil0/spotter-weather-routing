@@ -149,6 +149,7 @@ REST_FRAMEWORK = {
         "anon": "30/minute",
         "geocode": "30/minute",
         "analyze": "10/minute",
+        "heatmap": "10/minute",
     },
 }
 

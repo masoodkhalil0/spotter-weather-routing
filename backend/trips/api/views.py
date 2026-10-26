@@ -9,10 +9,11 @@ from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
-from trips.api.serializers import AnalyzeRequestSerializer
+from trips.api.serializers import AnalyzeRequestSerializer, HeatmapRequestSerializer
 from trips.services.analysis import analyze_trip
+from trips.services.heatmap import build_heatmap
 from trips.services.geocoding import GeocodingError, search_places
-from trips.services.routing import RoutingServiceError
+from trips.services.routing import RoutingServiceError, get_routes
 from trips.services.weather import WeatherServiceError
 
 
@@ -102,6 +103,51 @@ class AnalyzeView(APIView):
             )
         except Exception:
             logger.exception("Unexpected error in analyze endpoint")
+            return Response(
+                {"detail": "Internal server error."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        return Response(result)
+
+
+class HeatmapView(APIView):
+    """Validate trip inputs, fetch routes, and build a compact weather-risk heatmap."""
+
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "heatmap"
+
+    def post(self, request):
+        serializer = HeatmapRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        try:
+            routes = get_routes(
+                serializer.origin_point,
+                serializer.destination_point,
+            )
+            result = build_heatmap(
+                routes,
+                serializer.departure_aware,
+                serializer.validated_data["load_weight_lb"],
+                hours=serializer.validated_data["hours"],
+            )
+        except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except RoutingServiceError as exc:
+            logger.warning("Routing upstream failed: %s", exc)
+            return Response(
+                {"detail": "Routing upstream failed."},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+        except WeatherServiceError as exc:
+            logger.warning("Weather upstream failed: %s", exc)
+            return Response(
+                {"detail": "Weather upstream failed."},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+        except Exception:
+            logger.exception("Unexpected error in heatmap endpoint")
             return Response(
                 {"detail": "Internal server error."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,

@@ -19,6 +19,7 @@ class ApiTests(APITestCase):
         self.health_url = reverse("api-health")
         self.geocode_url = reverse("api-geocode")
         self.analyze_url = reverse("api-analyze")
+        self.heatmap_url = reverse("api-heatmap")
         self.departure = (django_timezone.now() + timedelta(hours=2)).replace(microsecond=0)
 
     def _payload(self, **overrides):
@@ -169,3 +170,61 @@ class ApiTests(APITestCase):
         response = self.client.post(self.analyze_url, data="origin=1", content_type="application/x-www-form-urlencoded")
 
         self.assertEqual(response.status_code, 415)
+
+    @patch("trips.api.views.build_heatmap")
+    @patch("trips.api.views.get_routes")
+    def test_heatmap_valid_request_returns_200_and_calls_services(self, mock_get_routes, mock_build_heatmap) -> None:
+        mock_get_routes.return_value = [object()]
+        mock_build_heatmap.return_value = {"hours": 24, "level_names": ["LOW"], "points": []}
+
+        response = self.client.post(self.heatmap_url, data=self._payload(hours=24, interval_miles=None), format="json")
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"hours": 24, "level_names": ["LOW"], "points": []})
+        mock_get_routes.assert_called_once()
+        mock_build_heatmap.assert_called_once()
+
+    def test_heatmap_invalid_request_returns_400(self) -> None:
+        response = self.client.post(self.heatmap_url, data=self._payload(hours=49, interval_miles=None), format="json")
+
+        self.assertEqual(response.status_code, 400)
+
+    @patch("trips.api.views.get_routes")
+    def test_heatmap_routing_service_error_returns_502_without_raw_exception_text(self, mock_get_routes) -> None:
+        mock_get_routes.side_effect = RoutingServiceError("osrm exploded")
+
+        with self.assertLogs("trips", level="WARNING") as captured_logs:
+            response = self.client.post(self.heatmap_url, data=self._payload(interval_miles=None), format="json")
+
+        self.assertEqual(response.status_code, 502)
+        self.assertEqual(response.json(), {"detail": "Routing upstream failed."})
+        self.assertNotIn("osrm exploded", response.content.decode())
+        self.assertTrue(any("Routing upstream failed: osrm exploded" in entry for entry in captured_logs.output))
+
+    @patch("trips.api.views.build_heatmap")
+    @patch("trips.api.views.get_routes")
+    def test_heatmap_weather_service_error_returns_502_without_raw_exception_text(self, mock_get_routes, mock_build_heatmap) -> None:
+        mock_get_routes.return_value = [object()]
+        mock_build_heatmap.side_effect = WeatherServiceError("meteo exploded")
+
+        with self.assertLogs("trips", level="WARNING") as captured_logs:
+            response = self.client.post(self.heatmap_url, data=self._payload(interval_miles=None), format="json")
+
+        self.assertEqual(response.status_code, 502)
+        self.assertEqual(response.json(), {"detail": "Weather upstream failed."})
+        self.assertNotIn("meteo exploded", response.content.decode())
+        self.assertTrue(any("Weather upstream failed: meteo exploded" in entry for entry in captured_logs.output))
+
+    @patch("trips.api.views.build_heatmap")
+    @patch("trips.api.views.get_routes")
+    def test_heatmap_throttling_returns_429_on_eleventh_request(self, mock_get_routes, mock_build_heatmap) -> None:
+        mock_get_routes.return_value = [object()]
+        mock_build_heatmap.return_value = {"hours": 24, "level_names": ["LOW"], "points": []}
+
+        for _ in range(10):
+            response = self.client.post(self.heatmap_url, data=self._payload(interval_miles=None), format="json")
+            self.assertEqual(response.status_code, 200)
+
+        response = self.client.post(self.heatmap_url, data=self._payload(interval_miles=None), format="json")
+
+        self.assertEqual(response.status_code, 429)

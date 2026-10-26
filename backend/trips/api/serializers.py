@@ -78,3 +78,14 @@ class AnalyzeRequestSerializer(serializers.Serializer):
         """Return the validated departure timestamp in aware form."""
 
         return self.validated_data["departure"]
+
+
+class HeatmapRequestSerializer(AnalyzeRequestSerializer):
+    """Validate heatmap inputs using the same trip fields minus interval_miles."""
+
+    hours = serializers.IntegerField(min_value=1, max_value=48, required=False, default=48)
+
+    def get_fields(self):
+        fields = super().get_fields()
+        fields.pop("interval_miles", None)
+        return fields
