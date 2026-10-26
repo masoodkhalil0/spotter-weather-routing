@@ -79,6 +79,46 @@ class DemoWeatherTests(SimpleTestCase):
 
         self.assertEqual(result, original)
 
+    def test_demo_sweep_level_shares_are_balanced(self) -> None:
+        counts = {level: 0 for level in RiskLevel}
+        total_samples = 0
+
+        for mile_marker in range(0, 1001, 10):
+            for hour_offset in range(48):
+                weather = apply_demo_weather({"wind_mph": 0.0, "rain_in_hr": 0.0, "snow_in_hr": 0.0}, mile_marker, hour_offset)
+                level = assess_risk(_conditions_from_dict(weather), 20000.0).level
+                counts[level] += 1
+                total_samples += 1
+
+        shares = {level: counts[level] / total_samples for level in RiskLevel}
+
+        self.assertGreaterEqual(shares[RiskLevel.LOW], 0.25)
+        self.assertLessEqual(shares[RiskLevel.LOW], 0.45)
+        self.assertGreaterEqual(shares[RiskLevel.MODERATE], 0.15)
+        self.assertLessEqual(shares[RiskLevel.MODERATE], 0.35)
+        self.assertGreaterEqual(shares[RiskLevel.HIGH], 0.10)
+        self.assertLessEqual(shares[RiskLevel.HIGH], 0.30)
+        self.assertGreaterEqual(shares[RiskLevel.SEVERE], 0.05)
+        self.assertLessEqual(shares[RiskLevel.SEVERE], 0.20)
+        self.assertGreaterEqual(shares[RiskLevel.NO_TRAVEL], 0.01)
+        self.assertLessEqual(shares[RiskLevel.NO_TRAVEL], 0.10)
+
+    def test_demo_sweep_has_calm_stretch(self) -> None:
+        has_calm_stretch = False
+
+        for mile_marker in range(0, 1001, 10):
+            if any(
+                assess_risk(
+                    _conditions_from_dict(apply_demo_weather({"wind_mph": 0.0, "rain_in_hr": 0.0, "snow_in_hr": 0.0}, mile_marker, hour_offset)),
+                    20000.0,
+                ).level == RiskLevel.LOW
+                for hour_offset in range(48)
+            ):
+                has_calm_stretch = True
+                break
+
+        self.assertTrue(has_calm_stretch)
+
 
 class DemoModeSettingsTests(SimpleTestCase):
     @override_settings(DEBUG=False, DEMO_MODE=True)
