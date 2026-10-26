@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 import hashlib
 import json
+import logging
+import re
 import time
 
 from django.conf import settings
@@ -15,7 +17,6 @@ from requests.exceptions import RequestException, Timeout
 
 
 NOMINATIM_SEARCH_URL = "https://nominatim.openstreetmap.org/search"
-NOMINATIM_COUNTRY_CODES = "us"
 MIN_QUERY_LENGTH = 3
 MAX_QUERY_LENGTH = 200
 MIN_LIMIT = 1
@@ -30,6 +31,10 @@ LATITUDE_MIN = -90.0
 LATITUDE_MAX = 90.0
 LONGITUDE_MIN = -180.0
 LONGITUDE_MAX = 180.0
+COUNTRY_CODES_PATTERN = re.compile(r"^[a-z,]+$")
+
+
+logger = logging.getLogger("trips")
 
 
 @dataclass(frozen=True)
@@ -80,6 +85,20 @@ def _wait_for_rate_guard() -> None:
         time.sleep(RATE_GUARD_SLEEP_SECONDS)
 
 
+def _country_codes_param() -> str | None:
+    """Return validated Nominatim country codes from settings, if configured."""
+
+    value = settings.GEOCODE_COUNTRY_CODES.strip()
+    if not value:
+        return None
+
+    if not COUNTRY_CODES_PATTERN.fullmatch(value) or ",," in value:
+        logger.warning("Ignoring invalid GEOCODE_COUNTRY_CODES setting: %s", value)
+        return None
+
+    return value
+
+
 def _request_places(query: str, limit: int) -> Response:
     """Call the Nominatim endpoint with one retry for timeouts and 5xx responses."""
 
@@ -88,8 +107,10 @@ def _request_places(query: str, limit: int) -> Response:
         "q": query,
         "format": "jsonv2",
         "limit": limit,
-        "countrycodes": NOMINATIM_COUNTRY_CODES,
     }
+    country_codes = _country_codes_param()
+    if country_codes is not None:
+        params["countrycodes"] = country_codes
 
     _wait_for_rate_guard()
 
@@ -157,7 +178,7 @@ def _parse_places(payload: object) -> list[Place]:
 
 
 def search_places(query: str, limit: int = 5) -> list[Place]:
-    """Search for US places using the Nominatim API with caching and retry logic."""
+    """Search for places using the Nominatim API with caching and retry logic."""
 
     normalized_query = _normalize_query(query)
     if not MIN_LIMIT <= limit <= MAX_LIMIT:

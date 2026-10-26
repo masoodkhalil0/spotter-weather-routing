@@ -190,3 +190,5 @@ OUTBOUND_USER_AGENT = config(
     "OUTBOUND_USER_AGENT",
     default="WeatherRouteApp/1.0 (set OUTBOUND_USER_AGENT in .env)",
 )
+
+GEOCODE_COUNTRY_CODES = config("GEOCODE_COUNTRY_CODES", default="")

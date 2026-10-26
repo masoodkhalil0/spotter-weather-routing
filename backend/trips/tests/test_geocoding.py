@@ -85,7 +85,7 @@ class GeocodingTests(SimpleTestCase):
 
     @patch("trips.services.geocoding.time.sleep", return_value=None)
     @patch("trips.services.geocoding.requests.get")
-    def test_user_agent_and_country_code_are_sent(self, mock_get: Mock, _: Mock) -> None:
+    def test_default_empty_country_codes_send_no_countrycodes_param(self, mock_get: Mock, _: Mock) -> None:
         mock_get.return_value = _response([])
 
         search_places("Seattle", limit=4)
@@ -94,7 +94,35 @@ class GeocodingTests(SimpleTestCase):
             mock_get.call_args.kwargs["headers"]["User-Agent"],
             "WeatherRouteApp/1.0 (tests@example.com)",
         )
+        self.assertNotIn("countrycodes", mock_get.call_args.kwargs["params"])
+
+    @override_settings(
+        OUTBOUND_USER_AGENT="WeatherRouteApp/1.0 (tests@example.com)",
+        GEOCODE_COUNTRY_CODES="us",
+    )
+    @patch("trips.services.geocoding.time.sleep", return_value=None)
+    @patch("trips.services.geocoding.requests.get")
+    def test_configured_country_codes_are_sent(self, mock_get: Mock, _: Mock) -> None:
+        mock_get.return_value = _response([])
+
+        search_places("Seattle", limit=4)
+
         self.assertEqual(mock_get.call_args.kwargs["params"]["countrycodes"], "us")
+
+    @override_settings(
+        OUTBOUND_USER_AGENT="WeatherRouteApp/1.0 (tests@example.com)",
+        GEOCODE_COUNTRY_CODES="US,ca1",
+    )
+    @patch("trips.services.geocoding.time.sleep", return_value=None)
+    @patch("trips.services.geocoding.requests.get")
+    def test_invalid_country_codes_are_ignored_with_warning(self, mock_get: Mock, _: Mock) -> None:
+        mock_get.return_value = _response([])
+
+        with self.assertLogs("trips", level="WARNING") as captured_logs:
+            search_places("Seattle", limit=4)
+
+        self.assertNotIn("countrycodes", mock_get.call_args.kwargs["params"])
+        self.assertTrue(any("Ignoring invalid GEOCODE_COUNTRY_CODES setting: US,ca1" in entry for entry in captured_logs.output))
 
     @patch("trips.services.geocoding.time.sleep", return_value=None)
     @patch("trips.services.geocoding.requests.get")
