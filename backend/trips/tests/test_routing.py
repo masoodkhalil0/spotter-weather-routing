@@ -233,6 +233,38 @@ class RoutingTests(SimpleTestCase):
 
     @patch("trips.services.routing.sleep", return_value=None)
     @patch("trips.services.routing.requests.get")
+    def test_via_request_uses_lowercase_false_and_logs_osrm_details(self, mock_get: Mock, _: Mock) -> None:
+        initial_payload = _alternative_payload(
+            [
+                {
+                    "distance": 10000.0,
+                    "duration": 1000.0,
+                    "geometry": {"coordinates": [[-75.0, 40.0], [-74.5, 40.5], [-74.0, 41.0]]},
+                },
+                {
+                    "distance": 10500.0,
+                    "duration": 1020.0,
+                    "geometry": {"coordinates": [[-75.0, 40.0], [-74.6, 40.4], [-74.0, 41.0]]},
+                },
+            ]
+        )
+        invalid_query = {"code": "InvalidQuery", "message": "Query string malformed close to position 102", "routes": [], "waypoints": []}
+        mock_get.side_effect = [
+            _response(initial_payload),
+            _response(invalid_query, status_code=400),
+            _response(invalid_query, status_code=400),
+        ]
+
+        with self.assertLogs("trips.services.routing", level="WARNING") as captured_logs:
+            routes = get_routes(self.origin, self.destination, count=3)
+
+        self.assertEqual(len(routes), 2)
+        self.assertEqual(mock_get.call_args_list[1].kwargs["params"]["alternatives"], "false")
+        self.assertTrue(any("osrm_code=InvalidQuery" in entry for entry in captured_logs.output))
+        self.assertTrue(any("Query string malformed close to position 102" in entry for entry in captured_logs.output))
+
+    @patch("trips.services.routing.sleep", return_value=None)
+    @patch("trips.services.routing.requests.get")
     def test_invalid_via_candidates_return_two_routes_without_error(self, mock_get: Mock, _: Mock) -> None:
         initial_payload = _alternative_payload(
             [

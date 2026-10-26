@@ -51,6 +51,11 @@ logger = logging.getLogger(__name__)
 class RoutingServiceError(Exception):
     """Raised when routing cannot be completed cleanly."""
 
+    def __init__(self, message: str, *, osrm_code: str | None = None, osrm_message: str | None = None) -> None:
+        super().__init__(message)
+        self.osrm_code = osrm_code
+        self.osrm_message = osrm_message
+
 
 @dataclass(frozen=True)
 class Route:
@@ -289,10 +294,15 @@ def _request_osrm(
 ) -> dict[str, Any]:
     """Call OSRM with retry-on-timeout/5xx semantics."""
 
+    if isinstance(alternatives, bool):
+        alternatives_param: str | int = "true" if alternatives else "false"
+    else:
+        alternatives_param = alternatives
+
     path = _lon_lat_string(points)
     url = f"{OSRM_BASE_URL}/{path}"
     params = {
-        "alternatives": alternatives,
+        "alternatives": alternatives_param,
         "overview": "full",
         "geometries": "geojson",
         "steps": "false",
@@ -381,7 +391,11 @@ def _parse_routes(payload: dict[str, Any], *, is_generated: bool) -> list[Route]
     """Parse OSRM route response data."""
 
     if payload.get("code") != "Ok":
-        raise RoutingServiceError("No route found between these locations")
+        raise RoutingServiceError(
+            "No route found between these locations",
+            osrm_code=str(payload.get("code")) if payload.get("code") is not None else None,
+            osrm_message=str(payload.get("message")) if payload.get("message") is not None else None,
+        )
 
     routes_data = payload.get("routes")
     if not isinstance(routes_data, list):
@@ -504,8 +518,9 @@ def get_routes(
                 candidate = candidate_routes[0]
             except RoutingServiceError as exc:
                 logger.warning(
-                    "Optional generated via route failed (osrm_code=%s): %s",
-                    payload.get("code") if "payload" in locals() and isinstance(payload, dict) else None,
+                    "Optional generated via route failed (osrm_code=%s, osrm_message=%s): %s",
+                    exc.osrm_code,
+                    exc.osrm_message,
                     exc,
                 )
                 continue
