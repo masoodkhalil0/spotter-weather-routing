@@ -6,11 +6,36 @@ function getApiBaseUrl() {
 }
 
 async function readErrorMessage(response) {
+  function collectMessages(value, path = '') {
+    if (typeof value === 'string') {
+      return path ? [`${path}: ${value}`] : [value]
+    }
+
+    if (Array.isArray(value)) {
+      return value.flatMap((item) => collectMessages(item, path))
+    }
+
+    if (value && typeof value === 'object') {
+      return Object.entries(value).flatMap(([key, nestedValue]) => {
+        const nextPath = path ? `${path}.${key}` : key
+        return collectMessages(nestedValue, nextPath)
+      })
+    }
+
+    return []
+  }
+
   try {
     const data = await response.json()
 
     if (data && typeof data.detail === 'string' && data.detail.trim()) {
       return data.detail
+    }
+
+    const messages = collectMessages(data)
+
+    if (messages.length > 0) {
+      return messages.join(' ')
     }
   } catch {
     // Ignore JSON parsing errors and fall back to a generic message below.
