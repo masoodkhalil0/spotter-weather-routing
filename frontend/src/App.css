@@ -40,32 +40,191 @@
 
 .trip-form {
   margin-top: 24px;
+  display: grid;
+  gap: 16px;
 }
 
 .field-group {
   position: relative;
-  margin-bottom: 18px;
+  margin-bottom: 0;
 }
 
 .field-label {
   display: block;
   margin-bottom: 8px;
   font-weight: 600;
+  color: #1f2937;
+}
+
+.field-helper-text {
+  margin: 0 0 8px;
+  color: #6b7280;
+  font-size: 0.92rem;
+  line-height: 1.5;
 }
 
 .text-input {
   width: 100%;
+  min-height: 48px;
   padding: 12px 14px;
-  border: 1px solid #b8c4d6;
-  border-radius: 10px;
+  border: 1px solid #c7d2e3;
+  border-radius: 12px;
   background: #ffffff;
+  color: #1f2937;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .text-input:focus,
 .submit-button:focus,
-.search-option:focus {
-  outline: 3px solid #2563eb;
-  outline-offset: 2px;
+.search-option:focus,
+.input-action-button:focus,
+.secondary-button:focus,
+.time-picker-display-part:focus,
+.time-picker-period-toggle button:focus,
+.time-picker-clock:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.18);
+}
+
+.input-with-icon {
+  position: relative;
+}
+
+.input-with-action {
+  display: flex;
+  align-items: center;
+}
+
+.input-leading-icon {
+  position: absolute;
+  top: 50%;
+  left: 14px;
+  z-index: 1;
+  width: 20px;
+  height: 20px;
+  color: #6b7280;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.input-leading-icon svg,
+.input-action-button svg {
+  width: 100%;
+  height: 100%;
+}
+
+.has-leading-icon {
+  padding-left: 44px;
+}
+
+.has-trailing-button {
+  padding-right: 56px;
+}
+
+.input-action-button {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: #4b5563;
+  transform: translateY(-50%);
+  cursor: pointer;
+}
+
+.input-action-button:hover {
+  background: #eef5ff;
+  color: #1d4ed8;
+}
+
+.date-picker,
+.time-picker {
+  z-index: 20;
+}
+
+.segmented-input-shell {
+  position: relative;
+}
+
+.segmented-input {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 48px;
+  padding: 6px 56px 6px 44px;
+  border: 1px solid #c7d2e3;
+  border-radius: 12px;
+  background: #ffffff;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.segmented-input:focus-within {
+  border-color: #2563eb;
+  box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.18);
+}
+
+.segment-input {
+  min-width: 0;
+  border: none;
+  padding: 0;
+  background: transparent;
+  color: #1f2937;
+  font: inherit;
+  text-align: center;
+}
+
+.segment-input:focus {
+  outline: none;
+  box-shadow: none;
+}
+
+.segment-input::placeholder {
+  color: #94a3b8;
+}
+
+.segment-input-short {
+  width: 32px;
+}
+
+.segment-input-year {
+  width: 54px;
+}
+
+.segment-separator {
+  margin: 0 6px;
+  color: #64748b;
+  font-weight: 600;
+}
+
+.segment-period-button {
+  margin-left: auto;
+  min-width: 46px;
+  height: 32px;
+  border: 1px solid #c7d2e3;
+  border-radius: 8px;
+  background: #f8fafc;
+  color: #1f2937;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.segment-period-button:hover {
+  background: #eef5ff;
+}
+
+.departure-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
 }
 
 .combobox-wrapper {
@@ -119,16 +278,254 @@
   width: 100%;
   padding: 14px 16px;
   border: none;
-  border-radius: 10px;
+  border-radius: 12px;
   background: #1d4ed8;
   color: #ffffff;
   font-weight: 700;
   cursor: pointer;
+  transition: transform 0.2s ease, background-color 0.2s ease, opacity 0.2s ease, box-shadow 0.2s ease;
+  box-shadow: 0 10px 20px rgba(29, 78, 216, 0.2);
+}
+
+.submit-button:hover:enabled {
+  background: #1e40af;
+  transform: translateY(-1px);
 }
 
 .submit-button:disabled {
   cursor: not-allowed;
-  opacity: 0.7;
+  opacity: 0.72;
+  box-shadow: none;
+}
+
+.secondary-button {
+  min-width: 88px;
+  min-height: 44px;
+  padding: 10px 14px;
+  border: 1px solid #c7d2e3;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #1f2937;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.secondary-button:hover {
+  background: #f8fbff;
+}
+
+.picker-popover {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: 40;
+  width: 264px;
+  padding: 12px;
+  border: 1px solid #dbe3ee;
+  border-radius: 12px;
+  background: #ffffff;
+  box-shadow: 0 18px 40px rgba(15, 23, 42, 0.16);
+  overflow-y: auto;
+}
+
+.picker-popover-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.picker-popover-label {
+  margin: 0 0 4px;
+  color: #6b7280;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.picker-popover-title {
+  margin: 0;
+  font-size: 1rem;
+  line-height: 1.25;
+}
+
+.picker-popover-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.picker-confirm-button {
+  width: auto;
+  min-width: 88px;
+}
+
+.picker-footer-button {
+  min-height: 32px;
+  padding: 6px 12px;
+}
+
+.picker-nav-buttons {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.picker-nav-button {
+  min-width: 32px;
+  min-height: 32px;
+  padding: 0;
+  font-size: 1rem;
+}
+
+.calendar-grid-shell {
+  display: grid;
+  gap: 8px;
+}
+
+.calendar-weekdays,
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.calendar-weekdays {
+  color: #6b7280;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.calendar-day {
+  width: 32px;
+  min-height: 32px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  background: transparent;
+  color: #1f2937;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.calendar-day:hover:enabled {
+  background: #eef5ff;
+}
+
+.calendar-day:disabled {
+  color: #cbd5e1;
+  cursor: not-allowed;
+}
+
+.calendar-day.is-outside-month {
+  color: #94a3b8;
+}
+
+.calendar-day.is-today {
+  border-color: #93c5fd;
+}
+
+.calendar-day.is-selected {
+  background: #2563eb;
+  color: #ffffff;
+}
+
+.time-picker-display {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.time-picker-display-part {
+  border: none;
+  border-radius: 10px;
+  background: transparent;
+  color: #1f2937;
+  font-size: 1.45rem;
+  font-weight: 700;
+  line-height: 1;
+  padding: 4px 6px;
+  cursor: pointer;
+}
+
+.time-picker-display-part.is-active {
+  background: #eef5ff;
+  color: #1d4ed8;
+}
+
+.time-picker-display-separator {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.time-picker-period-toggle {
+  display: inline-flex;
+  gap: 8px;
+}
+
+.time-picker-period-toggle button {
+  min-width: 44px;
+  min-height: 32px;
+  padding: 6px 10px;
+  border: 1px solid #c7d2e3;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #374151;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.time-picker-period-toggle button[aria-pressed='true'] {
+  background: #1d4ed8;
+  border-color: #1d4ed8;
+  color: #ffffff;
+}
+
+.time-picker-clock-shell {
+  display: flex;
+  justify-content: center;
+}
+
+.time-picker-clock {
+  display: block;
+  max-width: 100%;
+  overflow: visible;
+  cursor: pointer;
+}
+
+.time-picker-clock-face {
+  fill: #f8fbff;
+  stroke: #dbe3ee;
+  stroke-width: 1.5;
+}
+
+.time-picker-clock-hand {
+  stroke: #2563eb;
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+
+.time-picker-clock-center {
+  fill: #2563eb;
+}
+
+.time-picker-clock-number text {
+  fill: #374151;
+  font-size: 0.78rem;
+  font-weight: 700;
+  user-select: none;
+}
+
+.time-picker-clock-number text.is-selected {
+  fill: #ffffff;
+}
+
+.time-picker-clock-number-selected {
+  fill: #2563eb;
 }
 
 .message-box {
@@ -400,6 +797,17 @@
 
   .route-map {
     height: 380px;
+  }
+}
+
+@media (max-width: 600px) {
+  .departure-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .picker-popover {
+    right: 0;
+    left: auto;
   }
 }
 

@@ -1,18 +1,70 @@
 import { useState } from 'react'
 import PlaceSearch from './PlaceSearch'
+import DatePicker from './DatePicker'
+import TimePicker from './TimePicker'
 
-function getNextFullHourLocalValue() {
+const TEN_DAYS_IN_MS = 10 * 24 * 60 * 60 * 1000
+
+function padNumber(value) {
+  return String(value).padStart(2, '0')
+}
+
+function formatDateInputValue(date) {
+  return `${date.getFullYear()}-${padNumber(date.getMonth() + 1)}-${padNumber(date.getDate())}`
+}
+
+function getDateRange() {
+  const today = new Date()
+  const maxDate = new Date(today.getTime() + TEN_DAYS_IN_MS)
+
+  return {
+    minDate: formatDateInputValue(today),
+    maxDate: formatDateInputValue(maxDate),
+  }
+}
+
+function getInitialDepartureParts() {
   const nextHour = new Date()
   nextHour.setMinutes(0, 0, 0)
   nextHour.setHours(nextHour.getHours() + 1)
 
-  const year = nextHour.getFullYear()
-  const month = String(nextHour.getMonth() + 1).padStart(2, '0')
-  const day = String(nextHour.getDate()).padStart(2, '0')
-  const hours = String(nextHour.getHours()).padStart(2, '0')
-  const minutes = String(nextHour.getMinutes()).padStart(2, '0')
+  return {
+    date: formatDateInputValue(nextHour),
+    time: `${padNumber(nextHour.getHours())}:${padNumber(nextHour.getMinutes())}`,
+  }
+}
 
-  return `${year}-${month}-${day}T${hours}:${minutes}`
+function buildDepartureValue(dateValue, timeValue) {
+  if (!dateValue || !timeValue) {
+    return ''
+  }
+
+  return `${dateValue}T${timeValue}`
+}
+
+function isDateOutOfRange(dateValue, minDate, maxDate) {
+  if (!dateValue) {
+    return true
+  }
+
+  return dateValue < minDate || dateValue > maxDate
+}
+
+function isPastTimeForDate(dateValue, timeValue) {
+  if (!dateValue || !timeValue) {
+    return true
+  }
+
+  const departureDate = new Date(`${dateValue}T${timeValue}`)
+  const now = new Date()
+  const minDate = new Date(now.getTime() - 60 * 60 * 1000)
+  const maxDate = new Date(now.getTime() + TEN_DAYS_IN_MS)
+
+  if (Number.isNaN(departureDate.getTime())) {
+    return true
+  }
+
+  return departureDate < minDate || departureDate > maxDate
 }
 
 // Calculate the straight-line distance between two latitude/longitude points in miles.
@@ -34,11 +86,15 @@ function getDistanceInMiles(origin, destination) {
 }
 
 function TripForm({ onSubmit, loading }) {
+  const initialDeparture = getInitialDepartureParts()
+
   const [origin, setOrigin] = useState(null)
   const [destination, setDestination] = useState(null)
-  const [departure, setDeparture] = useState(getNextFullHourLocalValue)
+  const [departureDate, setDepartureDate] = useState(initialDeparture.date)
+  const [departureTime, setDepartureTime] = useState(initialDeparture.time)
   const [loadWeight, setLoadWeight] = useState('30000')
   const [errors, setErrors] = useState({})
+  const [dateRange] = useState(() => getDateRange())
 
   function clearError(fieldName) {
     setErrors((currentErrors) => {
@@ -66,6 +122,7 @@ function TripForm({ onSubmit, loading }) {
 
   function validateForm() {
     const nextErrors = {}
+    const departure = buildDepartureValue(departureDate, departureTime)
 
     if (!origin) {
       nextErrors.origin = 'Please choose an origin from the search results.'
@@ -83,19 +140,16 @@ function TripForm({ onSubmit, loading }) {
       }
     }
 
-    if (!departure) {
-      nextErrors.departure = 'Please choose a departure date and time.'
-    } else {
-      const departureDate = new Date(departure)
-      const now = new Date()
-      const minDate = new Date(now.getTime() - 60 * 60 * 1000)
-      const maxDate = new Date(now.getTime() + 10 * 24 * 60 * 60 * 1000)
+    if (!departureDate) {
+      nextErrors.departureDate = 'Please choose a departure date and time.'
+    } else if (isDateOutOfRange(departureDate, dateRange.minDate, dateRange.maxDate)) {
+      nextErrors.departureDate = 'Departure must be between 1 hour ago and 10 days from now.'
+    }
 
-      if (Number.isNaN(departureDate.getTime())) {
-        nextErrors.departure = 'Please enter a valid departure date and time.'
-      } else if (departureDate < minDate || departureDate > maxDate) {
-        nextErrors.departure = 'Departure must be between 1 hour ago and 10 days from now.'
-      }
+    if (!departureTime) {
+      nextErrors.departureTime = 'Please choose a departure date and time.'
+    } else if (departure && isPastTimeForDate(departureDate, departureTime)) {
+      nextErrors.departureTime = 'Departure must be between 1 hour ago and 10 days from now.'
     }
 
     if (!/^\d+$/.test(loadWeight)) {
@@ -119,6 +173,8 @@ function TripForm({ onSubmit, loading }) {
       return
     }
 
+    const departure = buildDepartureValue(departureDate, departureTime)
+
     onSubmit({
       origin: { lat: origin.lat, lon: origin.lon },
       destination: { lat: destination.lat, lon: destination.lon },
@@ -135,27 +191,49 @@ function TripForm({ onSubmit, loading }) {
       <PlaceSearch label="Destination" value={destination} onSelect={handleDestinationSelect} />
       {errors.destination ? <p className="error-text" role="alert">Error: {errors.destination}</p> : null}
 
-      <div className="field-group">
-        <label className="field-label" htmlFor="departure-input">
-          Departure
-        </label>
-        <input
-          id="departure-input"
-          className="text-input"
-          type="datetime-local"
-          value={departure}
-          onChange={(event) => {
-            setDeparture(event.target.value)
-            clearError('departure')
+      <div className="departure-grid">
+        <DatePicker
+          id="departure-date-input"
+          label="Departure date"
+          helperText="Choose a date from today through the next 10 days."
+          value={departureDate}
+          min={dateRange.minDate}
+          max={dateRange.maxDate}
+          onChange={(nextDate) => {
+            setDepartureDate(nextDate)
+            clearError('departureDate')
           }}
+          onBlur={(isValid) => {
+            if (isValid) {
+              clearError('departureDate')
+            }
+          }}
+          error={errors.departureDate}
         />
-        {errors.departure ? <p className="error-text" role="alert">Error: {errors.departure}</p> : null}
+
+        <TimePicker
+          id="departure-time-input"
+          label="Departure time"
+          helperText="Type a time or choose one from the clock."
+          value={departureTime}
+          onChange={(nextTime) => {
+            setDepartureTime(nextTime)
+            clearError('departureTime')
+          }}
+          onBlur={(isValid) => {
+            if (isValid) {
+              clearError('departureTime')
+            }
+          }}
+          error={errors.departureTime}
+        />
       </div>
 
       <div className="field-group">
         <label className="field-label" htmlFor="load-weight-input">
           Load weight (lb)
         </label>
+        <p className="field-helper-text">Enter the total cargo weight as a whole number.</p>
         <input
           id="load-weight-input"
           className="text-input"
