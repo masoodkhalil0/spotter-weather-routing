@@ -1,0 +1,14 @@
+asgiref==3.13.0
+certifi==2026.10.23
+charset-normalizer==3.5.2
+Django==6.1.2
+django-cors-headers==4.9.0
+djangorestframework==3.18.3
+gunicorn==26.2.0
+idna==3.20
+python-decouple==3.8
+requests==2.34.2
+sqlparse==0.6.0
+tzdata==2026.5
+urllib3==2.8.0
+whitenoise==6.12.0
