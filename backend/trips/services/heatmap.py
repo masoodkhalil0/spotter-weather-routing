@@ -133,6 +133,7 @@ def build_heatmap(
     load_weight_lb: float,
     hours: int = 48,
     max_points: int = 60,
+    origin_timezone: str | None = None,
 ) -> dict[str, object]:
     """Build a compact JSON-serialisable weather-risk heatmap payload."""
 
@@ -187,6 +188,7 @@ def build_heatmap(
 
     return {
         "departure": _iso_utc(departure),
+        "origin_timezone": origin_timezone,
         "hours": hours,
         "start_time": _iso_utc(start_time),
         "load_weight_lb": float(load_weight_lb),

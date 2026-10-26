@@ -148,6 +148,7 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         "anon": "30/minute",
         "geocode": "30/minute",
+        "timezone": "30/minute",
         "analyze": "10/minute",
         "heatmap": "10/minute",
     },

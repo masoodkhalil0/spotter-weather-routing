@@ -121,6 +121,7 @@ def analyze_trip(
     departure: datetime,
     load_weight_lb: float,
     interval_miles: int | None = None,
+    origin_timezone: str | None = None,
 ) -> dict[str, object]:
     """Analyze route alternatives and return a JSON-serialisable recommendation."""
 
@@ -220,5 +221,6 @@ def analyze_trip(
         "explanation": explanation,
         "load_weight_lb": float(load_weight_lb),
         "departure": _iso_utc(departure),
+        "origin_timezone": origin_timezone,
         "routes": serialized_routes,
     }

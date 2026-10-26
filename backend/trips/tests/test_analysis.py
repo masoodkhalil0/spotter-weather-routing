@@ -90,7 +90,8 @@ class AnalysisTests(SimpleTestCase):
 
         result = analyze_trip(self.origin, self.destination, self.departure, 20000.0)
 
-        self.assertEqual(set(result.keys()), {"recommended_route_id", "explanation", "load_weight_lb", "departure", "routes"})
+        self.assertEqual(set(result.keys()), {"recommended_route_id", "explanation", "load_weight_lb", "departure", "origin_timezone", "routes"})
+        self.assertIsNone(result["origin_timezone"])
         self.assertEqual(result["recommended_route_id"], "route-1")
         self.assertEqual(result["routes"][0]["route_id"], "route-1")
         self.assertEqual(result["routes"][0]["rank"], 1)

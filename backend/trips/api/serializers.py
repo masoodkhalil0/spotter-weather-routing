@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import timedelta, timezone
+from datetime import timedelta
 
-from django.utils import timezone as django_timezone
 from rest_framework import serializers
 
 from trips.services.checkpoints import haversine_miles
@@ -23,28 +22,22 @@ class CoordinateSerializer(serializers.Serializer):
     lon = serializers.FloatField(min_value=-180.0, max_value=180.0)
 
 
+class NaiveAwareDateTimeField(serializers.DateTimeField):
+    """Keep parsed datetimes exactly as provided by the client."""
+
+    def enforce_timezone(self, value):
+        # DRF would otherwise make naive values UTC-aware before the view can use the origin zone.
+        return value
+
+
 class AnalyzeRequestSerializer(serializers.Serializer):
     """Validate analyze-trip inputs and normalize them for the API view."""
 
     origin = CoordinateSerializer()
     destination = CoordinateSerializer()
-    departure = serializers.DateTimeField(default_timezone=timezone.utc)
+    departure = NaiveAwareDateTimeField()
     load_weight_lb = serializers.FloatField(min_value=0.0, max_value=80000.0)
     interval_miles = serializers.ChoiceField(choices=ALLOWED_INTERVALS, required=False)
-
-    def validate_departure(self, value):
-        """Require a near-future aware departure while treating naive datetimes as UTC."""
-
-        now = django_timezone.now()
-        if value < now - MIN_DEPARTURE_AGE:
-            raise serializers.ValidationError(
-                "Departure must be within the last hour or later."
-            )
-        if value > now + MAX_DEPARTURE_AHEAD:
-            raise serializers.ValidationError(
-                "Departure must be within the next 10 days."
-            )
-        return value
 
     def validate(self, attrs):
         """Require origin and destination to be meaningfully different."""
