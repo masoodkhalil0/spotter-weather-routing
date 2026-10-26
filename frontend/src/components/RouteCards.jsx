@@ -6,7 +6,7 @@ const RouteCards = memo(function RouteCards({ routes, selectedRouteId, onSelect,
   return (
     <section className="results-sidebar">
       <div className="route-explanation">
-        <h2 className="section-title">Route summary</h2>
+        <h2 className="section-title">Recommendation</h2>
         <p>{explanation || 'The backend did not provide an explanation for this recommendation.'}</p>
       </div>
 

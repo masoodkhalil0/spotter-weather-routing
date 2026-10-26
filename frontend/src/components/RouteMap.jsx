@@ -25,6 +25,7 @@ const FitBounds = memo(function FitBounds({ bounds }) {
 const SelectedRouteMarkers = memo(function SelectedRouteMarkers({ route }) {
   const startPoint = route.geometry?.[0]
   const endPoint = route.geometry?.[route.geometry.length - 1]
+  const lastCheckpointIndex = (route.checkpoints?.length || 1) - 1
 
   return (
     <>
@@ -54,8 +55,15 @@ const SelectedRouteMarkers = memo(function SelectedRouteMarkers({ route }) {
         </CircleMarker>
       ) : null}
 
-      {route.checkpoints?.map((checkpoint, index) => {
+      {route.checkpoints?.map((checkpoint) => {
         const riskInfo = getRiskInfo(checkpoint.level)
+        let popupTitle = `Checkpoint ${checkpoint.index}`
+
+        if (checkpoint.index === 0) {
+          popupTitle = 'Start (A)'
+        } else if (checkpoint.index === lastCheckpointIndex) {
+          popupTitle = 'Destination (B)'
+        }
 
         return (
           <CircleMarker
@@ -72,7 +80,7 @@ const SelectedRouteMarkers = memo(function SelectedRouteMarkers({ route }) {
           >
             <Popup>
               <div className="checkpoint-popup">
-                <h3>Checkpoint {checkpoint.index + 1}</h3>
+                <h3>{popupTitle}</h3>
                 <p>
                   <strong>Mile marker:</strong> {checkpoint.mile_marker}
                 </p>
@@ -96,8 +104,8 @@ const SelectedRouteMarkers = memo(function SelectedRouteMarkers({ route }) {
                   <strong>Reasons:</strong>
                   {checkpoint.reasons?.length ? (
                     <ul>
-                      {checkpoint.reasons.map((reason) => (
-                        <li key={`${index}-${reason}`}>{reason}</li>
+                      {checkpoint.reasons.map((reason, reasonIndex) => (
+                        <li key={`${reasonIndex}-${reason}`}>{reason}</li>
                       ))}
                     </ul>
                   ) : (

@@ -203,6 +203,10 @@
   min-width: 0;
 }
 
+.map-panel {
+  align-self: start;
+}
+
 .route-explanation,
 .route-card,
 .map-panel {
@@ -402,5 +406,16 @@
 @media (max-width: 960px) {
   .results-layout {
     grid-template-columns: 1fr;
+  }
+
+  .map-panel {
+    position: static;
+  }
+}
+
+@media (min-width: 900px) {
+  .map-panel {
+    position: sticky;
+    top: 16px;
   }
 }
