@@ -133,15 +133,15 @@ def assess_risk(conditions: WeatherConditions, load_weight_lb: float) -> RiskAss
 
     if wind_risk >= RiskLevel.MODERATE:
         reasons.append(
-            f"Wind at {conditions.wind_mph} mph is {wind_risk.name.replace('_', ' ').lower()}."
+            f"Wind at {conditions.wind_mph:.1f} mph is {wind_risk.name.replace('_', ' ').lower()}."
         )
     if rain_risk >= RiskLevel.MODERATE:
         reasons.append(
-            f"Rain at {conditions.rain_in_hr} in/hr is {rain_risk.name.replace('_', ' ').lower()}."
+            f"Rain at {conditions.rain_in_hr:.2f} in/hr is {rain_risk.name.replace('_', ' ').lower()}."
         )
     if snow_risk >= RiskLevel.MODERATE:
         reasons.append(
-            f"Snow at {conditions.snow_in_hr} in/hr is {snow_risk.name.replace('_', ' ').lower()}."
+            f"Snow at {conditions.snow_in_hr:.2f} in/hr is {snow_risk.name.replace('_', ' ').lower()}."
         )
 
     level = max(wind_risk, rain_risk, snow_risk)

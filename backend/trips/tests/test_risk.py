@@ -141,6 +141,18 @@ class AssessRiskTests(SimpleTestCase):
         )
 
         self.assertEqual(len(assessment.reasons), 3)
+        self.assertIn("Wind at 25.0 mph is moderate.", assessment.reasons)
+        self.assertIn("Rain at 0.25 in/hr is high.", assessment.reasons)
+        self.assertIn("Snow at 0.50 in/hr is moderate.", assessment.reasons)
+
+    def test_reason_text_rounds_snow_to_two_decimals(self) -> None:
+        assessment = assess_risk(
+            WeatherConditions(wind_mph=0.0, rain_in_hr=0.0, snow_in_hr=0.7223516),
+            load_weight_lb=1000.0,
+        )
+
+        self.assertIn("Snow at 0.72 in/hr is moderate.", assessment.reasons)
+        self.assertFalse(any("0.7223516 in/hr" in reason for reason in assessment.reasons))
 
     def test_negative_values_raise_value_error(self) -> None:
         with self.assertRaises(ValueError):
