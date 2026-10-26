@@ -94,6 +94,7 @@ class GeocodingTests(SimpleTestCase):
             mock_get.call_args.kwargs["headers"]["User-Agent"],
             "WeatherRouteApp/1.0 (tests@example.com)",
         )
+        self.assertEqual(mock_get.call_args.kwargs["params"]["accept-language"], "en")
         self.assertNotIn("countrycodes", mock_get.call_args.kwargs["params"])
 
     @override_settings(

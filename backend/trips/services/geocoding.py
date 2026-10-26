@@ -107,6 +107,7 @@ def _request_places(query: str, limit: int) -> Response:
         "q": query,
         "format": "jsonv2",
         "limit": limit,
+        "accept-language": "en",
     }
     country_codes = _country_codes_param()
     if country_codes is not None:
