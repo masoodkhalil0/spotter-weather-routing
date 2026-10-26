@@ -197,8 +197,27 @@ def _segment_miles(markers: Sequence[float]) -> list[float]:
     return segments
 
 
+def _checkpoint_positions_for_markers(
+    coordinates: Sequence[tuple[float, float]],
+    markers: Sequence[float],
+    total_miles: float,
+    geometry_miles: float,
+) -> list[tuple[float, float]]:
+    """Return checkpoint positions using route miles for markers and geometry for interpolation."""
+
+    if total_miles == 0.0 or geometry_miles == 0.0:
+        return _checkpoint_positions(coordinates, markers)
+
+    geometry_markers = [geometry_miles * marker / total_miles for marker in markers]
+    positions = _checkpoint_positions(coordinates, geometry_markers)
+    positions[0] = coordinates[0]
+    positions[-1] = coordinates[-1]
+    return positions
+
+
 def generate_checkpoints(
     coordinates: Sequence[tuple[float, float]],
+    route_distance_miles: float,
     duration_seconds: float,
     departure: datetime,
     interval_miles: float,
@@ -208,12 +227,15 @@ def generate_checkpoints(
     _validate_coordinates(coordinates)
     _validate_departure(departure)
 
+    if route_distance_miles < 0:
+        raise ValueError("route_distance_miles cannot be negative")
     if interval_miles <= 0:
         raise ValueError("interval_miles must be greater than 0")
     if duration_seconds < 0:
         raise ValueError("duration_seconds cannot be negative")
 
-    total_miles = polyline_length_miles(coordinates)
+    total_miles = route_distance_miles
+    geometry_miles = polyline_length_miles(coordinates)
     if total_miles == 0.0:
         lat, lon = coordinates[0]
         return [
@@ -228,7 +250,12 @@ def generate_checkpoints(
         ]
 
     markers = _mile_markers(total_miles, interval_miles)
-    positions = _checkpoint_positions(coordinates, markers)
+    positions = _checkpoint_positions_for_markers(
+        coordinates,
+        markers,
+        total_miles,
+        geometry_miles,
+    )
     represented_segments = _segment_miles(markers)
 
     checkpoints: list[Checkpoint] = []

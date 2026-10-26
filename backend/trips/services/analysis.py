@@ -138,6 +138,7 @@ def analyze_trip(
         chosen_interval = interval_miles or choose_interval_miles(route.distance_miles)
         checkpoints = generate_checkpoints(
             route.coordinates,
+            route.distance_miles,
             route.duration_seconds,
             departure,
             chosen_interval,

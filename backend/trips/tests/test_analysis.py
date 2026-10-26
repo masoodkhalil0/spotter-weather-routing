@@ -9,6 +9,7 @@ from django.test import SimpleTestCase
 
 from trips.services.analysis import analyze_trip, downsample_geometry
 from trips.services.checkpoints import choose_interval_miles, generate_checkpoints
+from trips.services.risk import RiskLevel
 from trips.services.routing import Route
 from trips.services.weather import HourlyForecast
 
@@ -55,7 +56,7 @@ def _forecast_for_eta(
 
 def _route_checkpoints(route: Route, departure: datetime, interval_miles: int | None = None):
     interval = interval_miles or choose_interval_miles(route.distance_miles)
-    return generate_checkpoints(route.coordinates, route.duration_seconds, departure, interval)
+    return generate_checkpoints(route.coordinates, route.distance_miles, route.duration_seconds, departure, interval)
 
 
 class AnalysisTests(SimpleTestCase):
@@ -207,3 +208,35 @@ class AnalysisTests(SimpleTestCase):
         result = analyze_trip(self.origin, self.destination, self.departure, 1000.0, interval_miles=50)
 
         self.assertEqual(result["routes"][0]["interval_miles"], 50)
+
+    @patch("trips.services.analysis.fetch_forecasts")
+    @patch("trips.services.analysis.get_routes")
+    def test_authoritative_route_distance_flows_through_analysis(
+        self,
+        mock_get_routes: Mock,
+        mock_fetch_forecasts: Mock,
+    ) -> None:
+        route = _route(
+            "route-1",
+            ((40.0, -75.0), (40.5, -74.7), (41.0, -74.0)),
+            150.0,
+            7200.0,
+        )
+        checkpoints = _route_checkpoints(route, self.departure, interval_miles=50)
+        mock_get_routes.return_value = [route]
+        mock_fetch_forecasts.return_value = [_forecast_for_eta(checkpoint.eta, 10.0) for checkpoint in checkpoints]
+
+        result = analyze_trip(self.origin, self.destination, self.departure, 1000.0, interval_miles=50)
+
+        for serialized_route in result["routes"]:
+            miles_by_level = serialized_route["summary"]["miles_by_level"]
+            non_zero_levels = sum(1 for miles in miles_by_level.values() if miles > 0)
+            self.assertLessEqual(
+                abs(sum(miles_by_level.values()) - serialized_route["distance_miles"]),
+                0.05 * non_zero_levels + 0.05,
+            )
+            self.assertAlmostEqual(
+                serialized_route["checkpoints"][-1]["mile_marker"],
+                serialized_route["distance_miles"],
+                delta=1e-6,
+            )

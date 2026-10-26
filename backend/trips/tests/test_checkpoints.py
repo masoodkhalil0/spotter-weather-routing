@@ -47,6 +47,7 @@ class GenerateCheckpointsTests(SimpleTestCase):
 
         checkpoints = generate_checkpoints(
             coordinates=coordinates,
+            route_distance_miles=total_miles,
             duration_seconds=7200.0,
             departure=self.departure,
             interval_miles=25.0,
@@ -67,6 +68,7 @@ class GenerateCheckpointsTests(SimpleTestCase):
 
         checkpoints = generate_checkpoints(
             coordinates=coordinates,
+            route_distance_miles=polyline_length_miles(coordinates),
             duration_seconds=5400.0,
             departure=self.departure,
             interval_miles=25.0,
@@ -88,6 +90,7 @@ class GenerateCheckpointsTests(SimpleTestCase):
 
         checkpoints = generate_checkpoints(
             coordinates=coordinates,
+            route_distance_miles=polyline_length_miles(coordinates),
             duration_seconds=duration,
             departure=self.departure,
             interval_miles=25.0,
@@ -104,6 +107,7 @@ class GenerateCheckpointsTests(SimpleTestCase):
 
         checkpoints = generate_checkpoints(
             coordinates=coordinates,
+            route_distance_miles=polyline_length_miles(coordinates),
             duration_seconds=5000.0,
             departure=self.departure,
             interval_miles=30.0,
@@ -119,6 +123,7 @@ class GenerateCheckpointsTests(SimpleTestCase):
 
         checkpoints = generate_checkpoints(
             coordinates=coordinates,
+            route_distance_miles=0.0,
             duration_seconds=100.0,
             departure=self.departure,
             interval_miles=10.0,
@@ -138,6 +143,62 @@ class GenerateCheckpointsTests(SimpleTestCase):
             ],
         )
 
+    def test_route_distance_miles_is_authoritative_when_geometry_differs(self) -> None:
+        coordinates = [(0.0, 0.0), (0.7, 0.0), (1.4, 0.0)]
+        route_distance_miles = 120.0
+
+        checkpoints = generate_checkpoints(
+            coordinates=coordinates,
+            route_distance_miles=route_distance_miles,
+            duration_seconds=5000.0,
+            departure=self.departure,
+            interval_miles=30.0,
+        )
+
+        self.assertAlmostEqual(checkpoints[-1].mile_marker, route_distance_miles, delta=1e-6)
+        self.assertAlmostEqual(
+            sum(checkpoint.segment_miles for checkpoint in checkpoints),
+            route_distance_miles,
+            delta=1e-6,
+        )
+
+    def test_first_and_last_checkpoint_positions_match_geometry_endpoints(self) -> None:
+        coordinates = [(10.0, 20.0), (10.4, 20.3), (10.8, 20.9)]
+
+        checkpoints = generate_checkpoints(
+            coordinates=coordinates,
+            route_distance_miles=150.0,
+            duration_seconds=5400.0,
+            departure=self.departure,
+            interval_miles=50.0,
+        )
+
+        self.assertEqual((checkpoints[0].lat, checkpoints[0].lon), coordinates[0])
+        self.assertEqual((checkpoints[-1].lat, checkpoints[-1].lon), coordinates[-1])
+
+    def test_zero_distance_and_short_route_still_work(self) -> None:
+        zero_distance = generate_checkpoints(
+            coordinates=[(10.0, 20.0), (10.0, 20.0)],
+            route_distance_miles=0.0,
+            duration_seconds=60.0,
+            departure=self.departure,
+            interval_miles=10.0,
+        )
+        short_route = generate_checkpoints(
+            coordinates=[(0.0, 0.0), (0.01, 0.0)],
+            route_distance_miles=0.2,
+            duration_seconds=120.0,
+            departure=self.departure,
+            interval_miles=10.0,
+        )
+
+        self.assertEqual(len(zero_distance), 1)
+        self.assertEqual(zero_distance[0].mile_marker, 0.0)
+        self.assertEqual(zero_distance[0].segment_miles, 0.0)
+        self.assertEqual(len(short_route), 2)
+        self.assertAlmostEqual(short_route[-1].mile_marker, 0.2, delta=1e-6)
+        self.assertAlmostEqual(sum(checkpoint.segment_miles for checkpoint in short_route), 0.2, delta=1e-6)
+
     def test_invalid_inputs_raise_value_error(self) -> None:
         aware_departure = self.departure
         naive_departure = datetime(2026, 1, 1, 12, 0)
@@ -155,6 +216,7 @@ class GenerateCheckpointsTests(SimpleTestCase):
         with self.assertRaises(ValueError):
             generate_checkpoints(
                 coordinates=[(0.0, 0.0)],
+                route_distance_miles=1.0,
                 duration_seconds=10.0,
                 departure=aware_departure,
                 interval_miles=5.0,
@@ -163,6 +225,7 @@ class GenerateCheckpointsTests(SimpleTestCase):
         with self.assertRaises(ValueError):
             generate_checkpoints(
                 coordinates=valid_coordinates,
+                route_distance_miles=1.0,
                 duration_seconds=-1.0,
                 departure=aware_departure,
                 interval_miles=5.0,
@@ -171,6 +234,7 @@ class GenerateCheckpointsTests(SimpleTestCase):
         with self.assertRaises(ValueError):
             generate_checkpoints(
                 coordinates=valid_coordinates,
+                route_distance_miles=1.0,
                 duration_seconds=10.0,
                 departure=aware_departure,
                 interval_miles=0.0,
@@ -179,6 +243,7 @@ class GenerateCheckpointsTests(SimpleTestCase):
         with self.assertRaises(ValueError):
             generate_checkpoints(
                 coordinates=valid_coordinates,
+                route_distance_miles=1.0,
                 duration_seconds=10.0,
                 departure=naive_departure,
                 interval_miles=5.0,
@@ -187,6 +252,7 @@ class GenerateCheckpointsTests(SimpleTestCase):
         with self.assertRaises(ValueError):
             generate_checkpoints(
                 coordinates=[(-91.0, 0.0), (0.0, 0.0)],
+                route_distance_miles=1.0,
                 duration_seconds=10.0,
                 departure=aware_departure,
                 interval_miles=5.0,
@@ -195,6 +261,16 @@ class GenerateCheckpointsTests(SimpleTestCase):
         with self.assertRaises(ValueError):
             generate_checkpoints(
                 coordinates=[(0.0, -181.0), (0.0, 0.0)],
+                route_distance_miles=1.0,
+                duration_seconds=10.0,
+                departure=aware_departure,
+                interval_miles=5.0,
+            )
+
+        with self.assertRaises(ValueError):
+            generate_checkpoints(
+                coordinates=valid_coordinates,
+                route_distance_miles=-0.1,
                 duration_seconds=10.0,
                 departure=aware_departure,
                 interval_miles=5.0,
