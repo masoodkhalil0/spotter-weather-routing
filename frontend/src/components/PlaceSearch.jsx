@@ -14,6 +14,10 @@ function PlaceSearch({ label, value, onSelect }) {
   const wrapperRef = useRef(null)
   const listboxId = useId()
   const inputId = useId()
+  const trimmedInputValue = inputValue.trim()
+  const displayedErrorMessage = errorMessage.includes('q:')
+    ? 'Place search failed. Please try a shorter search.'
+    : errorMessage
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -100,6 +104,15 @@ function PlaceSearch({ label, value, onSelect }) {
       return
     }
 
+    if (trimmedValue.length > 200) {
+      setResults([])
+      setLoading(false)
+      setErrorMessage('Search text is too long (max 200 characters).')
+      setIsOpen(true)
+      setActiveIndex(-1)
+      return
+    }
+
     setResults([])
     setLoading(true)
     setErrorMessage('')
@@ -182,7 +195,7 @@ function PlaceSearch({ label, value, onSelect }) {
     }
   }
 
-  const showNoResults = isOpen && !loading && !errorMessage && inputValue.trim().length >= 3 && results.length === 0
+  const showNoResults = isOpen && !loading && !errorMessage && trimmedInputValue.length >= 3 && trimmedInputValue.length <= 200 && results.length === 0
   const showDropdown = isOpen && (loading || errorMessage || showNoResults || results.length > 0)
 
   return (
@@ -205,6 +218,7 @@ function PlaceSearch({ label, value, onSelect }) {
           }}
           onKeyDown={handleKeyDown}
           placeholder="Search for a city or address"
+          maxLength={200}
           autoComplete="off"
           role="combobox"
           aria-autocomplete="list"
@@ -217,7 +231,7 @@ function PlaceSearch({ label, value, onSelect }) {
           <ul className="search-dropdown" id={listboxId} role="listbox">
             {loading ? <li className="search-status">Searching...</li> : null}
 
-            {!loading && errorMessage ? <li className="search-status error-text">Error: {errorMessage}</li> : null}
+            {!loading && errorMessage ? <li className="search-status error-text">Error: {displayedErrorMessage}</li> : null}
 
             {!loading && !errorMessage && results.length > 0
               ? results.map((place, index) => (
