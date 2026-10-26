@@ -1,7 +1,7 @@
 .app-shell {
   min-height: 100vh;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   padding: 24px;
   background: #f4f7fb;
@@ -9,7 +9,7 @@
 }
 
 .card {
-  width: min(100%, 680px);
+  width: min(100%, 1280px);
   background: #ffffff;
   border: 1px solid #dbe3ee;
   border-radius: 16px;
@@ -150,6 +150,233 @@
   color: #166534;
 }
 
+.results-section {
+  margin-top: 28px;
+}
+
+.section-title {
+  margin: 0 0 12px;
+  font-size: 1.1rem;
+}
+
+.risk-legend {
+  margin-bottom: 20px;
+  padding: 16px;
+  border: 1px solid #dbe3ee;
+  border-radius: 12px;
+  background: #f8fbff;
+}
+
+.risk-legend-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 18px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.risk-legend-item,
+.risk-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.risk-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1px solid rgba(15, 23, 42, 0.2);
+  flex-shrink: 0;
+}
+
+.results-layout {
+  display: grid;
+  grid-template-columns: minmax(300px, 360px) minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.results-sidebar,
+.map-panel {
+  min-width: 0;
+}
+
+.route-explanation,
+.route-card,
+.map-panel {
+  border: 1px solid #dbe3ee;
+  border-radius: 12px;
+  background: #ffffff;
+}
+
+.route-explanation {
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.route-explanation p {
+  margin: 0;
+  line-height: 1.6;
+  color: #4b5563;
+}
+
+.route-cards {
+  display: grid;
+  gap: 14px;
+}
+
+.route-card {
+  width: 100%;
+  padding: 16px;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.route-card:hover {
+  border-color: #93c5fd;
+  transform: translateY(-1px);
+}
+
+.route-card[aria-pressed='true'],
+.route-card-selected {
+  border: 2px solid #1d4ed8;
+  box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.12);
+}
+
+.route-card:focus-visible,
+.route-card:focus,
+.leaflet-container:focus {
+  outline: 3px solid #2563eb;
+  outline-offset: 2px;
+}
+
+.route-card-header h3 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.route-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.route-badge,
+.route-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  font-weight: 700;
+}
+
+.route-badge {
+  background: #dbeafe;
+  color: #1d4ed8;
+}
+
+.route-tag {
+  background: #f3f4f6;
+  color: #374151;
+}
+
+.route-details {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 16px 0;
+}
+
+.route-details dt {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #6b7280;
+}
+
+.route-details dd {
+  margin: 4px 0 0;
+  font-weight: 600;
+}
+
+.miles-by-level {
+  padding-top: 12px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.miles-by-level-title {
+  margin: 0 0 8px;
+  font-weight: 700;
+}
+
+.miles-by-level ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 6px;
+}
+
+.miles-by-level-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.route-warning {
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+  color: #9a3412;
+  font-weight: 700;
+}
+
+.map-panel {
+  padding: 16px;
+}
+
+.map-wrapper {
+  overflow: hidden;
+  border-radius: 12px;
+}
+
+.route-map {
+  height: 520px;
+  width: 100%;
+}
+
+.checkpoint-popup h3 {
+  margin: 0 0 8px;
+}
+
+.checkpoint-popup p,
+.checkpoint-popup ul {
+  margin: 6px 0;
+}
+
+.checkpoint-popup ul {
+  padding-left: 18px;
+}
+
+.endpoint-label {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  color: #ffffff;
+  font-weight: 700;
+  text-align: center;
+}
+
+.endpoint-label::before {
+  display: none;
+}
+
 @media (max-width: 640px) {
   .app-shell {
     padding: 16px;
@@ -161,5 +388,19 @@
 
   .card h1 {
     font-size: 1.6rem;
+  }
+
+  .route-details {
+    grid-template-columns: 1fr;
+  }
+
+  .route-map {
+    height: 380px;
+  }
+}
+
+@media (max-width: 960px) {
+  .results-layout {
+    grid-template-columns: 1fr;
   }
 }

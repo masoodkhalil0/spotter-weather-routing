@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import './App.css'
 import { analyze, health } from './api/client'
+import RiskLegend from './components/RiskLegend'
+import RouteCards from './components/RouteCards'
+import RouteMap from './components/RouteMap'
 import TripForm from './components/TripForm'
 
 function App() {
@@ -8,6 +11,7 @@ function App() {
   const [loading, setLoading] = useState(false)
   const [errorMessage, setErrorMessage] = useState('')
   const [result, setResult] = useState(null)
+  const [selectedRouteId, setSelectedRouteId] = useState(null)
   const analyzeControllerRef = useRef(null)
 
   useEffect(() => {
@@ -58,10 +62,12 @@ function App() {
     setLoading(true)
     setErrorMessage('')
     setResult(null)
+    setSelectedRouteId(null)
 
     try {
       const data = await analyze(payload, { signal: controller.signal })
       setResult(data)
+      setSelectedRouteId(data.recommended_route_id || data.routes?.[0]?.route_id || null)
     } catch (error) {
       if (error.name === 'AbortError') {
         return
@@ -91,9 +97,23 @@ function App() {
         {errorMessage ? <div className="message-box error-box">Error: {errorMessage}</div> : null}
 
         {result ? (
-          <div className="message-box success-box">
-            Found {result.routes?.length ?? 0} route(s). Recommended: {result.recommended_route_id}
-          </div>
+          result.routes?.length ? (
+            <section className="results-section">
+              <RiskLegend />
+
+              <div className="results-layout">
+                <RouteCards
+                  routes={result.routes}
+                  selectedRouteId={selectedRouteId}
+                  onSelect={setSelectedRouteId}
+                  explanation={result.explanation}
+                />
+                <RouteMap routes={result.routes} selectedRouteId={selectedRouteId} onSelect={setSelectedRouteId} />
+              </div>
+            </section>
+          ) : (
+            <div className="message-box success-box">No routes were found for this trip.</div>
+          )
         ) : null}
       </section>
     </main>
