@@ -107,8 +107,9 @@ function App() {
                   selectedRouteId={selectedRouteId}
                   onSelect={setSelectedRouteId}
                   explanation={result.explanation}
+                  originTimezone={result.origin_timezone}
                 />
-                <RouteMap routes={result.routes} selectedRouteId={selectedRouteId} onSelect={setSelectedRouteId} />
+                <RouteMap routes={result.routes} selectedRouteId={selectedRouteId} onSelect={setSelectedRouteId} originTimezone={result.origin_timezone} />
               </div>
             </section>
           ) : (

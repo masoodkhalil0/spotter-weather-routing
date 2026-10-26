@@ -146,7 +146,7 @@
 
 .date-picker,
 .time-picker {
-  z-index: 20;
+  z-index: auto;
 }
 
 .segmented-input-shell {
@@ -233,8 +233,8 @@
 
 .search-dropdown {
   position: absolute;
-  z-index: 10;
-  top: calc(100% + 6px);
+  z-index: 1000;
+  top: 100%;
   left: 0;
   right: 0;
   margin: 0;
@@ -242,9 +242,9 @@
   list-style: none;
   background: #ffffff;
   border: 1px solid #d1dae8;
-  border-radius: 10px;
+  border-radius: 12px;
   box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12);
-  max-height: 240px;
+  max-height: 260px;
   overflow-y: auto;
 }
 

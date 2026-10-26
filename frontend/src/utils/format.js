@@ -1,11 +1,14 @@
-const dateTimeFormatter = new Intl.DateTimeFormat(undefined, {
-  weekday: 'short',
-  month: 'short',
-  day: 'numeric',
-  hour: 'numeric',
-  minute: '2-digit',
-  timeZoneName: 'short',
-})
+function getDateTimeFormatter(timeZone) {
+  return new Intl.DateTimeFormat(undefined, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+    timeZoneName: 'short',
+    ...(timeZone ? { timeZone } : {}),
+  })
+}
 
 export function formatDuration(seconds) {
   if (!Number.isFinite(seconds) || seconds < 0) {
@@ -35,7 +38,7 @@ export function formatMiles(value) {
   return `${value.toFixed(1)} mi`
 }
 
-export function formatDateTime(isoString) {
+export function formatDateTime(isoString, timeZone) {
   if (!isoString || typeof isoString !== 'string') {
     return 'Unknown'
   }
@@ -46,5 +49,5 @@ export function formatDateTime(isoString) {
     return 'Unknown'
   }
 
-  return dateTimeFormatter.format(date)
+  return getDateTimeFormatter(timeZone).format(date)
 }

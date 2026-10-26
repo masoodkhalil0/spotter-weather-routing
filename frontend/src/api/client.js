@@ -129,6 +129,17 @@ export function geocode(q, options = {}) {
   })
 }
 
+export function timezone(lat, lon, options = {}) {
+  const params = new URLSearchParams({
+    lat: String(lat),
+    lon: String(lon),
+  })
+
+  return request(`/api/timezone/?${params.toString()}`, {
+    signal: options.signal,
+  })
+}
+
 export function analyze(payload, options = {}) {
   return request('/api/analyze/', {
     method: 'POST',

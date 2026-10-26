@@ -1,7 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { timezone as lookupTimezone } from '../api/client'
 import PlaceSearch from './PlaceSearch'
 import DatePicker from './DatePicker'
 import TimePicker from './TimePicker'
+import { formatNaiveDeparture, getTimeZoneAbbreviation, isDepartureOutsideAllowedWindow } from '../utils/timezone'
 
 const TEN_DAYS_IN_MS = 10 * 24 * 60 * 60 * 1000
 
@@ -50,23 +52,6 @@ function isDateOutOfRange(dateValue, minDate, maxDate) {
   return dateValue < minDate || dateValue > maxDate
 }
 
-function isPastTimeForDate(dateValue, timeValue) {
-  if (!dateValue || !timeValue) {
-    return true
-  }
-
-  const departureDate = new Date(`${dateValue}T${timeValue}`)
-  const now = new Date()
-  const minDate = new Date(now.getTime() - 60 * 60 * 1000)
-  const maxDate = new Date(now.getTime() + TEN_DAYS_IN_MS)
-
-  if (Number.isNaN(departureDate.getTime())) {
-    return true
-  }
-
-  return departureDate < minDate || departureDate > maxDate
-}
-
 // Calculate the straight-line distance between two latitude/longitude points in miles.
 function getDistanceInMiles(origin, destination) {
   const earthRadiusMiles = 3958.8
@@ -95,6 +80,16 @@ function TripForm({ onSubmit, loading }) {
   const [loadWeight, setLoadWeight] = useState('30000')
   const [errors, setErrors] = useState({})
   const [dateRange] = useState(() => getDateRange())
+  const [originTimezone, setOriginTimezone] = useState(null)
+  const timezoneRequestRef = useRef({ controller: null, requestId: 0 })
+
+  useEffect(() => {
+    return () => {
+      if (timezoneRequestRef.current.controller) {
+        timezoneRequestRef.current.controller.abort()
+      }
+    }
+  }, [])
 
   function clearError(fieldName) {
     setErrors((currentErrors) => {
@@ -109,7 +104,22 @@ function TripForm({ onSubmit, loading }) {
   }
 
   function handleOriginSelect(place) {
+    setOriginTimezone(null)
     setOrigin(place)
+
+    if (timezoneRequestRef.current.controller) {
+      timezoneRequestRef.current.controller.abort()
+    }
+
+    if (!place) {
+      timezoneRequestRef.current = { controller: null, requestId: timezoneRequestRef.current.requestId + 1 }
+      return
+    }
+
+    const controller = new AbortController()
+    const requestId = timezoneRequestRef.current.requestId + 1
+    timezoneRequestRef.current = { controller, requestId }
+    fetchOriginTimezone(place, requestId, controller)
     clearError('origin')
     clearError('destination')
   }
@@ -117,12 +127,28 @@ function TripForm({ onSubmit, loading }) {
   function handleDestinationSelect(place) {
     setDestination(place)
     clearError('destination')
-    clearError('origin')
+  }
+
+  async function fetchOriginTimezone(place, requestId, controller) {
+    try {
+      const result = await lookupTimezone(place.lat, place.lon, { signal: controller.signal })
+
+      if (timezoneRequestRef.current.requestId !== requestId) {
+        return
+      }
+
+      setOriginTimezone(result?.timezone || null)
+    } catch (error) {
+      if (error.name === 'AbortError' || timezoneRequestRef.current.requestId !== requestId) {
+        return
+      }
+
+      setOriginTimezone(null)
+    }
   }
 
   function validateForm() {
     const nextErrors = {}
-    const departure = buildDepartureValue(departureDate, departureTime)
 
     if (!origin) {
       nextErrors.origin = 'Please choose an origin from the search results.'
@@ -148,7 +174,7 @@ function TripForm({ onSubmit, loading }) {
 
     if (!departureTime) {
       nextErrors.departureTime = 'Please choose a departure date and time.'
-    } else if (departure && isPastTimeForDate(departureDate, departureTime)) {
+    } else if (isDepartureOutsideAllowedWindow(departureDate, departureTime, originTimezone)) {
       nextErrors.departureTime = 'Departure must be between 1 hour ago and 10 days from now.'
     }
 
@@ -178,10 +204,15 @@ function TripForm({ onSubmit, loading }) {
     onSubmit({
       origin: { lat: origin.lat, lon: origin.lon },
       destination: { lat: destination.lat, lon: destination.lon },
-      departure: new Date(departure).toISOString(),
+      departure: originTimezone ? formatNaiveDeparture(departureDate, departureTime) : new Date(departure).toISOString(),
       load_weight_lb: Number(loadWeight),
     })
   }
+
+  const originTimezoneAbbreviation = originTimezone ? getTimeZoneAbbreviation(originTimezone) : ''
+  const timeZoneHelperText = originTimezone
+    ? `Time zone: ${originTimezone}${originTimezoneAbbreviation ? ` (${originTimezoneAbbreviation})` : ''}`
+    : 'Using your browser time zone'
 
   return (
     <form className="trip-form" onSubmit={handleSubmit} noValidate>
@@ -214,7 +245,7 @@ function TripForm({ onSubmit, loading }) {
         <TimePicker
           id="departure-time-input"
           label="Departure time"
-          helperText="Type a time or choose one from the clock."
+          helperText={`Type a time or choose one from the clock. ${timeZoneHelperText}`}
           value={departureTime}
           onChange={(nextTime) => {
             setDepartureTime(nextTime)

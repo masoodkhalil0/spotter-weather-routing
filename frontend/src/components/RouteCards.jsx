@@ -2,7 +2,7 @@ import { memo } from 'react'
 import { formatDateTime, formatDuration, formatMiles } from '../utils/format'
 import { RISK_LEVELS, getRiskInfo } from '../utils/risk'
 
-const RouteCards = memo(function RouteCards({ routes, selectedRouteId, onSelect, explanation }) {
+const RouteCards = memo(function RouteCards({ routes, selectedRouteId, onSelect, explanation, originTimezone }) {
   return (
     <section className="results-sidebar">
       <div className="route-explanation">
@@ -46,7 +46,7 @@ const RouteCards = memo(function RouteCards({ routes, selectedRouteId, onSelect,
                 </div>
                 <div>
                   <dt>Arrival</dt>
-                  <dd>{formatDateTime(route.arrival)}</dd>
+                  <dd>{formatDateTime(route.arrival, originTimezone || undefined)}</dd>
                 </div>
                 <div>
                   <dt>Worst risk</dt>

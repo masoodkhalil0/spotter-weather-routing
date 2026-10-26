@@ -22,7 +22,7 @@ const FitBounds = memo(function FitBounds({ bounds }) {
   return null
 })
 
-const SelectedRouteMarkers = memo(function SelectedRouteMarkers({ route }) {
+const SelectedRouteMarkers = memo(function SelectedRouteMarkers({ route, originTimezone }) {
   const startPoint = route.geometry?.[0]
   const endPoint = route.geometry?.[route.geometry.length - 1]
   const lastCheckpointIndex = (route.checkpoints?.length || 1) - 1
@@ -85,7 +85,7 @@ const SelectedRouteMarkers = memo(function SelectedRouteMarkers({ route }) {
                   <strong>Mile marker:</strong> {checkpoint.mile_marker}
                 </p>
                 <p>
-                  <strong>ETA:</strong> {formatDateTime(checkpoint.eta)}
+                  <strong>ETA:</strong> {formatDateTime(checkpoint.eta, originTimezone || undefined)}
                 </p>
                 <p>
                   <strong>Risk level:</strong> {riskInfo.label}
@@ -121,7 +121,7 @@ const SelectedRouteMarkers = memo(function SelectedRouteMarkers({ route }) {
   )
 })
 
-const RouteMap = memo(function RouteMap({ routes, selectedRouteId, onSelect }) {
+const RouteMap = memo(function RouteMap({ routes, selectedRouteId, onSelect, originTimezone }) {
   const selectedRoute = useMemo(() => {
     return routes.find((route) => route.route_id === selectedRouteId) || routes[0] || null
   }, [routes, selectedRouteId])
@@ -197,7 +197,7 @@ const RouteMap = memo(function RouteMap({ routes, selectedRouteId, onSelect }) {
             )
           })}
 
-          {selectedRoute ? <SelectedRouteMarkers route={selectedRoute} /> : null}
+          {selectedRoute ? <SelectedRouteMarkers route={selectedRoute} originTimezone={originTimezone} /> : null}
         </MapContainer>
       </div>
     </section>
