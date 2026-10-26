@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import logging
 from math import asin, atan2, cos, degrees, radians, sin, sqrt
 from time import sleep
 from typing import Any, Iterable, Sequence
@@ -42,6 +43,9 @@ LATITUDE_MAX: float = 90.0
 LONGITUDE_MIN: float = -180.0
 LONGITUDE_MAX: float = 180.0
 EARTH_RADIUS_KM: float = 6371.0088
+
+
+logger = logging.getLogger(__name__)
 
 
 class RoutingServiceError(Exception):
@@ -469,9 +473,16 @@ def get_routes(
             if len(distinct_routes) >= capped_count or request_budget.used >= MAX_REQUESTS_PER_CALL:
                 break
 
-            payload = _request_osrm((origin, waypoint, destination), False, request_budget)
-            candidate_routes = _parse_routes(payload, is_generated=True)
-            candidate = candidate_routes[0]
+            try:
+                payload = _request_osrm((origin, waypoint, destination), False, request_budget)
+                candidate_routes = _parse_routes(payload, is_generated=True)
+                if not candidate_routes:
+                    logger.warning("Optional generated via route was unusable")
+                    continue
+                candidate = candidate_routes[0]
+            except RoutingServiceError as exc:
+                logger.warning("Optional generated via route failed: %s", exc)
+                continue
 
             if _snap_distance_miles(payload, 1) > VIA_MAX_SNAP_MILES:
                 continue

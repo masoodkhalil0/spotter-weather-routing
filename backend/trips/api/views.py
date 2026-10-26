@@ -45,7 +45,8 @@ class GeocodeView(APIView):
 
         try:
             places = search_places(normalized_query)
-        except GeocodingError:
+        except GeocodingError as exc:
+            logger.warning("Geocoding upstream failed: %s", exc)
             return Response(
                 {"detail": "Geocoding upstream failed."},
                 status=status.HTTP_502_BAD_GATEWAY,
@@ -87,12 +88,14 @@ class AnalyzeView(APIView):
             )
         except ValueError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
-        except RoutingServiceError:
+        except RoutingServiceError as exc:
+            logger.warning("Routing upstream failed: %s", exc)
             return Response(
                 {"detail": "Routing upstream failed."},
                 status=status.HTTP_502_BAD_GATEWAY,
             )
-        except WeatherServiceError:
+        except WeatherServiceError as exc:
+            logger.warning("Weather upstream failed: %s", exc)
             return Response(
                 {"detail": "Weather upstream failed."},
                 status=status.HTTP_502_BAD_GATEWAY,

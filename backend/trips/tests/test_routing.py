@@ -153,6 +153,81 @@ class RoutingTests(SimpleTestCase):
 
     @patch("trips.services.routing.sleep", return_value=None)
     @patch("trips.services.routing.requests.get")
+    def test_optional_via_failure_keeps_primary_routes(self, mock_get: Mock, _: Mock) -> None:
+        initial_payload = _alternative_payload(
+            [
+                {
+                    "distance": 10000.0,
+                    "duration": 1000.0,
+                    "geometry": {"coordinates": [[-75.0, 40.0], [-74.8, 40.2], [-74.0, 41.0]]},
+                },
+                {
+                    "distance": 11000.0,
+                    "duration": 1100.0,
+                    "geometry": {"coordinates": [[-75.0, 40.0], [-74.6, 40.1], [-74.0, 41.0]]},
+                },
+            ]
+        )
+        mock_get.side_effect = [
+            _response(initial_payload),
+            _response({"code": "NoRoute", "routes": [], "waypoints": []}),
+            _response({"code": "NoRoute", "routes": [], "waypoints": []}),
+            _response({"code": "NoRoute", "routes": [], "waypoints": []}),
+            _response({"code": "NoRoute", "routes": [], "waypoints": []}),
+        ]
+
+        with self.assertLogs("trips.services.routing", level="WARNING") as captured_logs:
+            routes = get_routes(self.origin, self.destination, count=3)
+
+        self.assertEqual(len(routes), 2)
+        self.assertEqual([route.route_id for route in routes], ["route-1", "route-2"])
+        self.assertTrue(any("Optional generated via route failed" in entry for entry in captured_logs.output))
+
+    @patch("trips.services.routing.sleep", return_value=None)
+    @patch("trips.services.routing.requests.get")
+    def test_primary_request_failure_still_raises(self, mock_get: Mock, _: Mock) -> None:
+        mock_get.return_value = _response({"code": "NoRoute", "routes": [], "waypoints": []})
+
+        with self.assertRaisesMessage(RoutingServiceError, "No route found between these locations"):
+            get_routes(self.origin, self.destination, count=3)
+
+    @patch("trips.services.routing.sleep", return_value=None)
+    @patch("trips.services.routing.requests.get")
+    def test_second_via_side_can_succeed_after_first_side_fails(self, mock_get: Mock, _: Mock) -> None:
+        initial_payload = _alternative_payload(
+            [
+                {
+                    "distance": 10000.0,
+                    "duration": 1000.0,
+                    "geometry": {"coordinates": [[-75.0, 40.0], [-74.8, 40.2], [-74.0, 41.0]]},
+                },
+                {
+                    "distance": 11000.0,
+                    "duration": 1100.0,
+                    "geometry": {"coordinates": [[-75.0, 40.0], [-74.6, 40.1], [-74.0, 41.0]]},
+                },
+            ]
+        )
+        via_payload = _osrm_payload(
+            [(40.0, -75.0), (40.4, -75.4), (41.0, -74.0)],
+            distance_meters=13000.0,
+            duration_seconds=1200.0,
+        )
+        mock_get.side_effect = [
+            _response(initial_payload),
+            _response({"code": "NoRoute", "routes": [], "waypoints": []}),
+            _response(via_payload),
+        ]
+
+        with self.assertLogs("trips.services.routing", level="WARNING") as captured_logs:
+            routes = get_routes(self.origin, self.destination, count=3)
+
+        self.assertEqual(len(routes), 3)
+        self.assertTrue(routes[2].is_generated)
+        self.assertTrue(any("Optional generated via route failed" in entry for entry in captured_logs.output))
+
+    @patch("trips.services.routing.sleep", return_value=None)
+    @patch("trips.services.routing.requests.get")
     def test_invalid_via_candidates_return_two_routes_without_error(self, mock_get: Mock, _: Mock) -> None:
         initial_payload = _alternative_payload(
             [

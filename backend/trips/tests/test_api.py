@@ -62,11 +62,13 @@ class ApiTests(APITestCase):
     def test_geocode_error_returns_502(self, mock_search_places) -> None:
         mock_search_places.side_effect = GeocodingError("boom")
 
-        response = self.client.get(self.geocode_url, {"q": "Denver"})
+        with self.assertLogs("trips", level="WARNING") as captured_logs:
+            response = self.client.get(self.geocode_url, {"q": "Denver"})
 
         self.assertEqual(response.status_code, 502)
         self.assertEqual(response.json(), {"detail": "Geocoding upstream failed."})
         self.assertNotIn("boom", response.content.decode())
+        self.assertTrue(any("Geocoding upstream failed: boom" in entry for entry in captured_logs.output))
 
     @patch("trips.api.views.analyze_trip")
     def test_analyze_valid_request_returns_200_and_calls_service(self, mock_analyze_trip) -> None:
@@ -120,21 +122,25 @@ class ApiTests(APITestCase):
     def test_routing_service_error_returns_502_without_raw_exception_text(self, mock_analyze_trip) -> None:
         mock_analyze_trip.side_effect = RoutingServiceError("osrm exploded")
 
-        response = self.client.post(self.analyze_url, data=self._payload(), format="json")
+        with self.assertLogs("trips", level="WARNING") as captured_logs:
+            response = self.client.post(self.analyze_url, data=self._payload(), format="json")
 
         self.assertEqual(response.status_code, 502)
         self.assertEqual(response.json(), {"detail": "Routing upstream failed."})
         self.assertNotIn("osrm exploded", response.content.decode())
+        self.assertTrue(any("Routing upstream failed: osrm exploded" in entry for entry in captured_logs.output))
 
     @patch("trips.api.views.analyze_trip")
     def test_weather_service_error_returns_502_without_raw_exception_text(self, mock_analyze_trip) -> None:
         mock_analyze_trip.side_effect = WeatherServiceError("meteo exploded")
 
-        response = self.client.post(self.analyze_url, data=self._payload(), format="json")
+        with self.assertLogs("trips", level="WARNING") as captured_logs:
+            response = self.client.post(self.analyze_url, data=self._payload(), format="json")
 
         self.assertEqual(response.status_code, 502)
         self.assertEqual(response.json(), {"detail": "Weather upstream failed."})
         self.assertNotIn("meteo exploded", response.content.decode())
+        self.assertTrue(any("Weather upstream failed: meteo exploded" in entry for entry in captured_logs.output))
 
     @patch("trips.api.views.analyze_trip")
     def test_unexpected_exception_returns_500_with_generic_message(self, mock_analyze_trip) -> None:
