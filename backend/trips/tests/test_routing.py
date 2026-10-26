@@ -9,6 +9,7 @@ from requests.exceptions import Timeout
 from trips.services.routing import (
     DISTINCT_OVERLAP_LIMIT,
     METERS_PER_MILE,
+    NoRouteFoundError,
     TRUCK_SPEED_FACTOR,
     Route,
     RoutingServiceError,
@@ -190,10 +191,36 @@ class RoutingTests(SimpleTestCase):
 
     @patch("trips.services.routing.sleep", return_value=None)
     @patch("trips.services.routing.requests.get")
+    def test_optional_via_no_route_found_error_keeps_primary_routes(self, mock_get: Mock, _: Mock) -> None:
+        initial_payload = _alternative_payload(
+            [
+                {
+                    "distance": 10000.0,
+                    "duration": 1000.0,
+                    "geometry": {"coordinates": [[-75.0, 40.0], [-74.5, 40.5], [-74.0, 41.0]]},
+                },
+                {
+                    "distance": 10200.0,
+                    "duration": 1010.0,
+                    "geometry": {"coordinates": [[-75.0, 40.0], [-74.6, 40.6], [-74.0, 41.0]]},
+                },
+            ]
+        )
+        via_payload = {"code": "NoRoute", "routes": [], "waypoints": []}
+        mock_get.side_effect = [_response(initial_payload), _response(via_payload), _response(via_payload), _response(via_payload)]
+
+        with self.assertLogs("trips.services.routing", level="WARNING") as captured_logs:
+            routes = get_routes(self.origin, self.destination, count=3)
+
+        self.assertEqual(len(routes), 2)
+        self.assertTrue(any("Optional generated via route failed" in entry for entry in captured_logs.output))
+
+    @patch("trips.services.routing.sleep", return_value=None)
+    @patch("trips.services.routing.requests.get")
     def test_primary_request_failure_still_raises(self, mock_get: Mock, _: Mock) -> None:
         mock_get.return_value = _response({"code": "NoRoute", "routes": [], "waypoints": []})
 
-        with self.assertRaisesMessage(RoutingServiceError, "No route found between these locations"):
+        with self.assertRaisesMessage(RoutingServiceError, "No drivable route found between these places."):
             get_routes(self.origin, self.destination, count=3)
 
     @patch("trips.services.routing.sleep", return_value=None)
@@ -443,11 +470,66 @@ class RoutingTests(SimpleTestCase):
 
     @patch("trips.services.routing.sleep", return_value=None)
     @patch("trips.services.routing.requests.get")
-    def test_no_route_code_raises_clean_error(self, mock_get: Mock, _: Mock) -> None:
+    def test_no_route_code_raises_no_route_found_error(self, mock_get: Mock, _: Mock) -> None:
         mock_get.return_value = _response({"code": "NoRoute", "routes": [], "waypoints": []})
 
-        with self.assertRaisesMessage(RoutingServiceError, "No route found between these locations"):
+        with self.assertRaisesMessage(NoRouteFoundError, "No drivable route found between these places."):
             get_routes(self.origin, self.destination)
+
+    @patch("trips.services.routing.sleep", return_value=None)
+    @patch("trips.services.routing.requests.get")
+    def test_empty_routes_raise_no_route_found_error(self, mock_get: Mock, _: Mock) -> None:
+        mock_get.return_value = _response({"code": "Ok", "routes": [], "waypoints": []})
+
+        with self.assertRaisesMessage(NoRouteFoundError, "No drivable route found between these places."):
+            get_routes(self.origin, self.destination)
+
+    @patch("trips.services.routing.sleep", return_value=None)
+    @patch("trips.services.routing.requests.get")
+    def test_far_destination_snap_raises_no_route_found_error(self, mock_get: Mock, _: Mock) -> None:
+        mock_get.return_value = _response(
+            {
+                "code": "Ok",
+                "routes": [
+                    {
+                        "distance": 10000.0,
+                        "duration": 1000.0,
+                        "geometry": {"coordinates": [[-75.0, 40.0], [-74.0, 41.0]]},
+                    }
+                ],
+                "waypoints": [
+                    {"distance": 0.0, "location": [-75.0, 40.0]},
+                    {"distance": 14000000.0, "location": [-74.0, 41.0]},
+                ],
+            }
+        )
+
+        with self.assertRaisesMessage(NoRouteFoundError, "destination"):
+            get_routes(self.origin, self.destination)
+
+    @patch("trips.services.routing.sleep", return_value=None)
+    @patch("trips.services.routing.requests.get")
+    def test_nearby_snap_distance_allows_normal_result(self, mock_get: Mock, _: Mock) -> None:
+        mock_get.return_value = _response(
+            {
+                "code": "Ok",
+                "routes": [
+                    {
+                        "distance": 10000.0,
+                        "duration": 1000.0,
+                        "geometry": {"coordinates": [[-75.0, 40.0], [-74.0, 41.0]]},
+                    }
+                ],
+                "waypoints": [
+                    {"distance": 0.0, "location": [-75.0, 40.0]},
+                    {"distance": 200.0, "location": [-74.0, 41.0]},
+                ],
+            }
+        )
+
+        routes = get_routes(self.origin, self.destination)
+
+        self.assertEqual(len(routes), 1)
 
     @patch("trips.services.routing.sleep", return_value=None)
     @patch("trips.services.routing.requests.get")
@@ -490,6 +572,26 @@ class RoutingTests(SimpleTestCase):
             get_routes(self.origin, self.destination, count=1)
 
         self.assertEqual(mock_get.call_count, 2)
+
+    @patch("trips.services.routing.sleep", return_value=None)
+    @patch("trips.services.routing.requests.get")
+    def test_timeout_error_is_not_no_route_found_error(self, mock_get: Mock, _: Mock) -> None:
+        mock_get.side_effect = [Timeout(), Timeout()]
+
+        with self.assertRaises(RoutingServiceError) as captured:
+            get_routes(self.origin, self.destination, count=1)
+
+        self.assertNotIsInstance(captured.exception, NoRouteFoundError)
+
+    @patch("trips.services.routing.sleep", return_value=None)
+    @patch("trips.services.routing.requests.get")
+    def test_http_500_error_is_not_no_route_found_error(self, mock_get: Mock, _: Mock) -> None:
+        mock_get.side_effect = [_response({}, status_code=500), _response({}, status_code=500)]
+
+        with self.assertRaises(RoutingServiceError) as captured:
+            get_routes(self.origin, self.destination, count=1)
+
+        self.assertNotIsInstance(captured.exception, NoRouteFoundError)
 
     @patch("trips.services.routing.sleep", return_value=None)
     @patch("trips.services.routing.requests.get")

@@ -18,7 +18,7 @@ from trips.api.serializers import (
 from trips.services.analysis import analyze_trip
 from trips.services.heatmap import build_heatmap
 from trips.services.geocoding import GeocodingError, search_places
-from trips.services.routing import RoutingServiceError, get_routes
+from trips.services.routing import NoRouteFoundError, RoutingServiceError, get_routes
 from trips.services.timezones import (
     TimezoneLookupError,
     lookup_timezone,
@@ -140,6 +140,8 @@ class AnalyzeView(APIView):
             )
         except ValueError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except NoRouteFoundError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         except RoutingServiceError as exc:
             logger.warning("Routing upstream failed: %s", exc)
             return Response(
@@ -198,6 +200,8 @@ class HeatmapView(APIView):
                 status=status.HTTP_502_BAD_GATEWAY,
             )
         except ValueError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
+        except NoRouteFoundError as exc:
             return Response({"detail": str(exc)}, status=status.HTTP_400_BAD_REQUEST)
         except RoutingServiceError as exc:
             logger.warning("Routing upstream failed: %s", exc)

@@ -24,6 +24,7 @@ CONNECT_TIMEOUT_SECONDS: float = 3.05
 READ_TIMEOUT_SECONDS: float = 15.0
 CACHE_TTL_SECONDS: int = 3600
 MAX_ROUTES: int = 3
+MAX_SNAP_DISTANCE_METERS: float = 5000.0
 MAX_REQUESTS_PER_CALL: int = 5
 VIA_MAX_LENGTH_RATIO: float = 1.35
 VIA_MAX_SNAP_MILES: float = 10.0
@@ -55,6 +56,10 @@ class RoutingServiceError(Exception):
         super().__init__(message)
         self.osrm_code = osrm_code
         self.osrm_message = osrm_message
+
+
+class NoRouteFoundError(RoutingServiceError):
+    """Raised when no usable drivable route exists for the requested endpoints."""
 
 
 @dataclass(frozen=True)
@@ -390,12 +395,34 @@ def _route_from_osrm(route_data: dict[str, Any], *, is_generated: bool) -> Route
 def _parse_routes(payload: dict[str, Any], *, is_generated: bool) -> list[Route]:
     """Parse OSRM route response data."""
 
-    if payload.get("code") != "Ok":
-        raise RoutingServiceError(
-            "No route found between these locations",
-            osrm_code=str(payload.get("code")) if payload.get("code") is not None else None,
+    code = payload.get("code")
+    if code in {"NoRoute", "NoSegment"}:
+        raise NoRouteFoundError(
+            "No drivable route found between these places.",
+            osrm_code=str(code),
             osrm_message=str(payload.get("message")) if payload.get("message") is not None else None,
         )
+    if code != "Ok":
+        raise RoutingServiceError(
+            "No route found between these locations",
+            osrm_code=str(code) if code is not None else None,
+            osrm_message=str(payload.get("message")) if payload.get("message") is not None else None,
+        )
+
+    waypoints = payload.get("waypoints")
+    if isinstance(waypoints, list):
+        if len(waypoints) >= 1 and isinstance(waypoints[0], dict) and "distance" in waypoints[0]:
+            try:
+                if float(waypoints[0]["distance"]) > MAX_SNAP_DISTANCE_METERS:
+                    raise NoRouteFoundError("No drivable road found near the origin.")
+            except (TypeError, ValueError):
+                pass
+        if len(waypoints) >= 2 and isinstance(waypoints[-1], dict) and "distance" in waypoints[-1]:
+            try:
+                if float(waypoints[-1]["distance"]) > MAX_SNAP_DISTANCE_METERS:
+                    raise NoRouteFoundError("No drivable road found near the destination.")
+            except (TypeError, ValueError):
+                pass
 
     routes_data = payload.get("routes")
     if not isinstance(routes_data, list):
@@ -403,7 +430,7 @@ def _parse_routes(payload: dict[str, Any], *, is_generated: bool) -> list[Route]
 
     routes = [_route_from_osrm(route_data, is_generated=is_generated) for route_data in routes_data]
     if not routes:
-        raise RoutingServiceError("No route found between these locations")
+        raise NoRouteFoundError("No drivable route found between these places.")
     return routes
 
 
@@ -500,7 +527,7 @@ def get_routes(
     distinct_routes = _keep_distinct_routes(parsed_routes)
 
     if not distinct_routes:
-        raise RoutingServiceError("No route found between these locations")
+        raise NoRouteFoundError("No drivable route found between these places.")
 
     shortest_route = min(distinct_routes, key=lambda route: route.duration_seconds)
 
@@ -547,7 +574,7 @@ def get_routes(
     ]
 
     if not final_routes:
-        raise RoutingServiceError("No route found between these locations")
+        raise NoRouteFoundError("No drivable route found between these places.")
 
     cache.set(cache_key, final_routes, CACHE_TTL_SECONDS)
     return final_routes

@@ -10,7 +10,7 @@ from django.utils import timezone as django_timezone
 from rest_framework.test import APITestCase
 
 from trips.services.geocoding import GeocodingError, Place
-from trips.services.routing import RoutingServiceError
+from trips.services.routing import NoRouteFoundError, RoutingServiceError
 from trips.services.timezones import TimezoneLookupError
 from trips.services.weather import WeatherServiceError
 
@@ -263,6 +263,17 @@ class ApiTests(APITestCase):
 
     @patch("trips.api.views.lookup_timezone")
     @patch("trips.api.views.analyze_trip")
+    def test_analyze_no_route_found_error_returns_400_detail(self, mock_analyze_trip, mock_lookup_timezone) -> None:
+        mock_lookup_timezone.return_value = {"timezone": "America/New_York", "utc_offset_minutes": -240}
+        mock_analyze_trip.side_effect = NoRouteFoundError("No drivable route found between these places.")
+
+        response = self.client.post(self.analyze_url, data=self._payload(), format="json")
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json(), {"detail": "No drivable route found between these places."})
+
+    @patch("trips.api.views.lookup_timezone")
+    @patch("trips.api.views.analyze_trip")
     def test_value_error_returns_400_detail(self, mock_analyze_trip, mock_lookup_timezone) -> None:
         mock_lookup_timezone.return_value = {"timezone": "America/New_York", "utc_offset_minutes": -240}
         mock_analyze_trip.side_effect = ValueError("bad route")
@@ -358,6 +369,15 @@ class ApiTests(APITestCase):
         self.assertEqual(response.json(), {"detail": "Routing upstream failed."})
         self.assertNotIn("osrm exploded", response.content.decode())
         self.assertTrue(any("Routing upstream failed: osrm exploded" in entry for entry in captured_logs.output))
+
+    @patch("trips.api.views.get_routes")
+    def test_heatmap_no_route_found_error_returns_400_detail(self, mock_get_routes) -> None:
+        mock_get_routes.side_effect = NoRouteFoundError("No drivable road found near the destination.")
+
+        response = self.client.post(self.heatmap_url, data=self._payload(interval_miles=None), format="json")
+
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.json(), {"detail": "No drivable road found near the destination."})
 
     @patch("trips.api.views.lookup_timezone")
     @patch("trips.api.views.build_heatmap")
