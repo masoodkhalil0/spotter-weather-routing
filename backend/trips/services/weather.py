@@ -34,6 +34,10 @@ class WeatherServiceError(Exception):
     """Raised when forecast retrieval or lookup fails cleanly."""
 
 
+class WeatherRateLimitError(WeatherServiceError):
+    """Raised when the weather provider rate limits us (HTTP 429)."""
+
+
 @dataclass(frozen=True)
 class HourlyForecast:
     """Normalized hourly forecast values for one location."""
@@ -186,6 +190,9 @@ def _request_batch(points: Sequence[tuple[float, float]], start: date, end: date
                 sleep(RETRY_BACKOFF_SECONDS)
                 continue
             raise last_error
+
+        if response.status_code == 429:
+            raise WeatherRateLimitError("Weather service rate limit reached, please try again later")
 
         payload = _parse_response_json(response)
         items = _normalize_payload_list(payload, len(points))

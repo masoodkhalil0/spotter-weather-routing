@@ -24,7 +24,7 @@ from trips.services.timezones import (
     lookup_timezone,
     resolve_departure,
 )
-from trips.services.weather import WeatherServiceError
+from trips.services.weather import WeatherRateLimitError, WeatherServiceError
 
 
 logger = logging.getLogger("trips")
@@ -148,6 +148,8 @@ class AnalyzeView(APIView):
                 {"detail": "Routing upstream failed."},
                 status=status.HTTP_502_BAD_GATEWAY,
             )
+        except WeatherRateLimitError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
         except WeatherServiceError as exc:
             logger.warning("Weather upstream failed: %s", exc)
             return Response(
@@ -209,6 +211,8 @@ class HeatmapView(APIView):
                 {"detail": "Routing upstream failed."},
                 status=status.HTTP_502_BAD_GATEWAY,
             )
+        except WeatherRateLimitError as exc:
+            return Response({"detail": str(exc)}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
         except WeatherServiceError as exc:
             logger.warning("Weather upstream failed: %s", exc)
             return Response(

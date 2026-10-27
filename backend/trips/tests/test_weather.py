@@ -8,7 +8,13 @@ from django.test import SimpleTestCase
 from requests.exceptions import Timeout
 
 from trips.services.risk import WeatherConditions
-from trips.services.weather import HourlyForecast, WeatherServiceError, conditions_at, fetch_forecasts
+from trips.services.weather import (
+    HourlyForecast,
+    WeatherRateLimitError,
+    WeatherServiceError,
+    conditions_at,
+    fetch_forecasts,
+)
 
 
 def _response(payload: object, status_code: int = 200) -> Mock:
@@ -156,6 +162,19 @@ class WeatherTests(SimpleTestCase):
 
         with self.assertRaisesMessage(WeatherServiceError, "Weather service returned malformed data"):
             fetch_forecasts([(40.0, -75.0)], self.start, self.end)
+
+    @patch("trips.services.weather.sleep", return_value=None)
+    @patch("trips.services.weather.requests.get")
+    def test_rate_limited_response_raises_clean_error_without_retry(self, mock_get: Mock, _: Mock) -> None:
+        mock_get.return_value = _response(
+            {"error": True, "reason": "Daily API request limit exceeded. Please try again tomorrow."},
+            status_code=429,
+        )
+
+        with self.assertRaisesMessage(WeatherRateLimitError, "rate limit"):
+            fetch_forecasts([(40.0, -75.0)], self.start, self.end)
+
+        self.assertEqual(mock_get.call_count, 1)
 
     def test_conditions_at_picks_nearest_hour_and_validates_time(self) -> None:
         forecast = HourlyForecast(
