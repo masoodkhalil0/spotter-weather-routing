@@ -10,6 +10,7 @@ from trips.services.demo import apply_demo_weather, is_demo_mode_active
 from trips.services.recommend import explain_recommendation, rank_routes, summarize_route
 from trips.services.risk import RiskAssessment, RiskLevel, WeatherConditions, assess_risk
 from trips.services.routing import Route, get_routes
+from trips.services.timeutils import iso_utc
 from trips.services.weather import HourlyForecast, conditions_at, fetch_forecasts
 
 
@@ -62,12 +63,6 @@ def _validate_load_weight(load_weight_lb: float) -> None:
         raise ValueError("load_weight_lb cannot be negative")
 
 
-def _iso_utc(value: datetime) -> str:
-    """Return an ISO-8601 string normalized to UTC."""
-
-    return value.astimezone(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
-
-
 def _rounded_geometry(coordinates: Sequence[tuple[float, float]]) -> list[list[float]]:
     """Round geometry coordinates for JSON output."""
 
@@ -104,7 +99,7 @@ def _serialize_checkpoint(
         "mile_marker": round(checkpoint.mile_marker, MILES_ROUND_DIGITS),
         "lat": round(checkpoint.lat, COORDINATE_ROUND_DIGITS),
         "lon": round(checkpoint.lon, COORDINATE_ROUND_DIGITS),
-        "eta": _iso_utc(checkpoint.eta),
+        "eta": iso_utc(checkpoint.eta),
         "level": assessment.level.name,
         "reasons": list(assessment.reasons),
         "weather": {
@@ -214,7 +209,7 @@ def analyze_trip(
                 "is_generated": route.is_generated,
                 "distance_miles": round(route.distance_miles, MILES_ROUND_DIGITS),
                 "duration_seconds": round(route.duration_seconds),
-                "arrival": _iso_utc(departure + timedelta(seconds=route.duration_seconds)),
+                "arrival": iso_utc(departure + timedelta(seconds=route.duration_seconds)),
                 "interval_miles": route_intervals[route.route_id],
                 "summary": _serialize_summary(summary_by_route_id[route.route_id]),
                 "geometry": _rounded_geometry(route.coordinates),
@@ -234,7 +229,7 @@ def analyze_trip(
         "recommended_route_id": ranked_summaries[0].route_id,
         "explanation": explanation,
         "load_weight_lb": float(load_weight_lb),
-        "departure": _iso_utc(departure),
+        "departure": iso_utc(departure),
         "origin_timezone": origin_timezone,
         "routes": serialized_routes,
     }

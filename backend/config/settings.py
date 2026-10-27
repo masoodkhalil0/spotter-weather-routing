@@ -125,15 +125,6 @@ USE_TZ = True
 STATIC_URL = 'static/'
 
 
-# Email
-# https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
-
-MAILERS = {
-    'default': {
-        'BACKEND': 'django.core.mail.backends.console.EmailBackend',
-    },
-}
-
 # --- Static files (served by WhiteNoise in production) ---
 STATIC_ROOT = BASE_DIR / "staticfiles"
 

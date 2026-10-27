@@ -2,16 +2,13 @@
 
 from __future__ import annotations
 
-from datetime import timedelta
-
 from rest_framework import serializers
 
 from trips.services.checkpoints import haversine_miles
+from trips.services.heatmap import MAX_HEATMAP_HOURS
 
 
 MIN_TRIP_DISTANCE_MILES = 0.5
-MIN_DEPARTURE_AGE = timedelta(hours=1)
-MAX_DEPARTURE_AHEAD = timedelta(days=10)
 ALLOWED_INTERVALS = (10, 25, 50)
 
 
@@ -76,7 +73,12 @@ class AnalyzeRequestSerializer(serializers.Serializer):
 class HeatmapRequestSerializer(AnalyzeRequestSerializer):
     """Validate heatmap inputs using the same trip fields minus interval_miles."""
 
-    hours = serializers.IntegerField(min_value=1, max_value=48, required=False, default=48)
+    hours = serializers.IntegerField(
+        min_value=1,
+        max_value=MAX_HEATMAP_HOURS,
+        required=False,
+        default=MAX_HEATMAP_HOURS,
+    )
 
     def get_fields(self):
         fields = super().get_fields()

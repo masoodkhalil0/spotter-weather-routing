@@ -10,6 +10,7 @@ from trips.services.checkpoints import polyline_length_miles
 from trips.services.demo import apply_demo_weather, is_demo_mode_active
 from trips.services.risk import WeatherConditions, assess_risk
 from trips.services.routing import Route
+from trips.services.timeutils import iso_utc
 from trips.services.weather import WeatherServiceError, conditions_at, fetch_forecasts
 
 
@@ -17,6 +18,7 @@ GRID_CELL_SIZE_DEGREES: float = 0.1
 COORDINATE_ROUND_DIGITS: int = 5
 WIND_ROUND_DIGITS: int = 1
 PRECIPITATION_ROUND_DIGITS: int = 2
+MAX_HEATMAP_HOURS: int = 48
 LEVEL_NAMES: list[str] = ["LOW", "MODERATE", "HIGH", "SEVERE", "NO_TRAVEL"]
 
 
@@ -31,18 +33,13 @@ def _validate_load_weight(load_weight_lb: float) -> None:
 
 
 def _validate_hours(hours: int) -> None:
-    if not 1 <= hours <= 48:
-        raise ValueError("hours must be between 1 and 48")
+    if not 1 <= hours <= MAX_HEATMAP_HOURS:
+        raise ValueError(f"hours must be between 1 and {MAX_HEATMAP_HOURS}")
 
 
 def _validate_max_points(max_points: int) -> None:
     if max_points < 2:
         raise ValueError("max_points must be at least 2")
-
-
-def _iso_utc(value: datetime) -> str:
-    normalized = value.astimezone(timezone.utc).replace(microsecond=0)
-    return normalized.isoformat().replace("+00:00", "Z")
 
 
 def _round_hour_down(value: datetime) -> datetime:
@@ -132,7 +129,7 @@ def build_heatmap(
     routes: Sequence[Route],
     departure: datetime,
     load_weight_lb: float,
-    hours: int = 48,
+    hours: int = MAX_HEATMAP_HOURS,
     max_points: int = 60,
     origin_timezone: str | None = None,
 ) -> dict[str, object]:
@@ -203,10 +200,10 @@ def build_heatmap(
         )
 
     result = {
-        "departure": _iso_utc(departure),
+        "departure": iso_utc(departure),
         "origin_timezone": origin_timezone,
         "hours": hours,
-        "start_time": _iso_utc(start_time),
+        "start_time": iso_utc(start_time),
         "load_weight_lb": float(load_weight_lb),
         "level_names": LEVEL_NAMES,
         "points": serialized_points,
