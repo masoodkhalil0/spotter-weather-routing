@@ -1,4 +1,5 @@
 import { memo } from 'react'
+import RiskLabel from './RiskLabel'
 import { formatDateTime, formatDuration, formatMiles } from '../utils/format'
 import { RISK_LEVELS, getRiskInfo } from '../utils/risk'
 
@@ -51,8 +52,7 @@ const RouteCards = memo(function RouteCards({ routes, selectedRouteId, onSelect,
                 <div>
                   <dt>Worst risk</dt>
                   <dd className="risk-inline">
-                    <span className="risk-swatch" style={{ backgroundColor: worstRisk.color }} aria-hidden="true" />
-                    <span>{worstRisk.label}</span>
+                    <RiskLabel risk={worstRisk} />
                   </dd>
                 </div>
                 <div>
@@ -67,8 +67,7 @@ const RouteCards = memo(function RouteCards({ routes, selectedRouteId, onSelect,
                   {RISK_LEVELS.filter((risk) => (route.summary?.miles_by_level?.[risk.key] ?? 0) > 0).map((risk) => (
                     <li key={risk.key} className="miles-by-level-item">
                       <span className="risk-inline">
-                        <span className="risk-swatch" style={{ backgroundColor: risk.color }} aria-hidden="true" />
-                        <span>{risk.label}</span>
+                        <RiskLabel risk={risk} />
                       </span>
                       <span>{formatMiles(route.summary.miles_by_level[risk.key])}</span>
                     </li>

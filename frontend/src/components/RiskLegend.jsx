@@ -1,4 +1,5 @@
 import { memo } from 'react'
+import RiskLabel from './RiskLabel'
 import { RISK_LEVELS } from '../utils/risk'
 
 const RiskLegend = memo(function RiskLegend() {
@@ -8,8 +9,7 @@ const RiskLegend = memo(function RiskLegend() {
       <ul className="risk-legend-list">
         {RISK_LEVELS.map((risk) => (
           <li key={risk.key} className="risk-legend-item">
-            <span className="risk-swatch" style={{ backgroundColor: risk.color }} aria-hidden="true" />
-            <span>{risk.label}</span>
+            <RiskLabel risk={risk} />
           </li>
         ))}
       </ul>

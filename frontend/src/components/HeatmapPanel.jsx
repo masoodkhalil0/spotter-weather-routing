@@ -1,4 +1,5 @@
 import { memo, useMemo } from 'react'
+import RiskLabel from './RiskLabel'
 import { formatDateTime } from '../utils/format'
 import { RISK_LEVELS } from '../utils/risk'
 
@@ -88,8 +89,7 @@ const HeatmapPanel = memo(function HeatmapPanel({ heatmap, loading, error, origi
             {RISK_LEVELS.map((risk, index) => (
               <li key={risk.key} className="heatmap-summary-item">
                 <span className="risk-inline">
-                  <span className="risk-swatch" style={{ backgroundColor: risk.color }} aria-hidden="true" />
-                  <span>{risk.label}</span>
+                  <RiskLabel risk={risk} />
                 </span>
                 <span>{summary.countsByIndex.get(index + 1) || 0} points</span>
               </li>
