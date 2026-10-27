@@ -2,8 +2,10 @@ import { memo, useMemo } from 'react'
 import { formatDateTime } from '../utils/format'
 import { RISK_LEVELS } from '../utils/risk'
 
+const MS_PER_HOUR = 60 * 60 * 1000
+
 function addHoursToIsoString(isoString, hours) {
-  return new Date(Date.parse(isoString) + hours * 3600000).toISOString()
+  return new Date(Date.parse(isoString) + hours * MS_PER_HOUR).toISOString()
 }
 
 const HeatmapPanel = memo(function HeatmapPanel({ heatmap, loading, error, originTimezone, tripDurationSeconds, selectedHour, onHourChange }) {

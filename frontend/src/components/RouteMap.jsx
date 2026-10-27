@@ -8,6 +8,7 @@ const MAP_TILE_URL = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png'
 const MAP_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
 const DEFAULT_CENTER = [39.8283, -98.5795]
 const DEFAULT_ZOOM = 4
+const ENDPOINT_MARKER_RADIUS = 11
 
 const FitBounds = memo(function FitBounds({ bounds }) {
   const map = useMap()
@@ -34,7 +35,7 @@ const SelectedRouteMarkers = memo(function SelectedRouteMarkers({ route, originT
         <CircleMarker
           pane="checkpoints"
           center={startPoint}
-          radius={11}
+          radius={ENDPOINT_MARKER_RADIUS}
           pathOptions={{ color: '#ffffff', weight: 2, fillColor: '#0f172a', fillOpacity: 1 }}
         >
           <Tooltip direction="center" offset={[0, 0]} permanent className="endpoint-label">
@@ -47,7 +48,7 @@ const SelectedRouteMarkers = memo(function SelectedRouteMarkers({ route, originT
         <CircleMarker
           pane="checkpoints"
           center={endPoint}
-          radius={11}
+          radius={ENDPOINT_MARKER_RADIUS}
           pathOptions={{ color: '#ffffff', weight: 2, fillColor: '#0f172a', fillOpacity: 1 }}
         >
           <Tooltip direction="center" offset={[0, 0]} permanent className="endpoint-label">

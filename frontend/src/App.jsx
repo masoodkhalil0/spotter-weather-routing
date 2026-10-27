@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import './App.css'
 import { analyze, health, heatmap } from './api/client'
 import HeatmapPanel from './components/HeatmapPanel'
@@ -19,6 +19,10 @@ function App() {
   const [selectedRouteId, setSelectedRouteId] = useState(null)
   const analyzeControllerRef = useRef(null)
   const heatmapRequestRef = useRef({ controller: null, requestId: 0 })
+  const handleHourChange = useCallback(
+    (hour) => setHourState({ startTime: heatmapData?.start_time ?? null, hour }),
+    [heatmapData?.start_time],
+  )
 
   useEffect(() => {
     const controller = new AbortController()
@@ -185,7 +189,7 @@ function App() {
                 originTimezone={result.origin_timezone}
                 tripDurationSeconds={result.routes.find((route) => route.is_recommended)?.duration_seconds ?? null}
                 selectedHour={selectedHour}
-                onHourChange={(hour) => setHourState({ startTime: heatmapData?.start_time ?? null, hour })}
+                onHourChange={handleHourChange}
               />
             </section>
           ) : (
