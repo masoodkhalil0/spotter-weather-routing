@@ -1,6 +1,8 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { geocode } from '../api/client'
 
+const SEARCH_DEBOUNCE_MS = 400
+
 function PlaceSearch({ label, value, onSelect }) {
   const [inputValue, setInputValue] = useState(value ? value.label : '')
   const [results, setResults] = useState([])
@@ -147,7 +149,7 @@ function PlaceSearch({ label, value, onSelect }) {
           searchControllerRef.current = null
         }
       }
-    }, 400)
+    }, SEARCH_DEBOUNCE_MS)
   }
 
   function handleKeyDown(event) {
