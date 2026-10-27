@@ -43,7 +43,7 @@ class HeatmapTests(SimpleTestCase):
         with self.assertRaisesMessage(ValueError, "load_weight_lb cannot be negative"):
             build_heatmap([self.route], self.departure, -1.0)
 
-        with self.assertRaisesMessage(ValueError, "hours must be between 1 and 48"):
+        with self.assertRaisesMessage(ValueError, "hours must be between 1 and 49"):
             build_heatmap([self.route], self.departure, 1000.0, hours=0)
 
     @patch("trips.services.heatmap.fetch_forecasts")

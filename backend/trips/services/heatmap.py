@@ -18,7 +18,7 @@ GRID_CELL_SIZE_DEGREES: float = 0.1
 COORDINATE_ROUND_DIGITS: int = 5
 WIND_ROUND_DIGITS: int = 1
 PRECIPITATION_ROUND_DIGITS: int = 2
-MAX_HEATMAP_HOURS: int = 48
+MAX_HEATMAP_HOURS: int = 49  # number of hourly values, offsets 0..48
 LEVEL_NAMES: list[str] = ["LOW", "MODERATE", "HIGH", "SEVERE", "NO_TRAVEL"]
 
 

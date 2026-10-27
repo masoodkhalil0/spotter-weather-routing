@@ -368,7 +368,7 @@ class ApiTests(APITestCase):
         self.assertEqual(mock_build_heatmap.call_args.kwargs["origin_timezone"], "America/New_York")
 
     def test_heatmap_invalid_request_returns_400(self) -> None:
-        response = self.client.post(self.heatmap_url, data=self._payload(hours=49, interval_miles=None), format="json")
+        response = self.client.post(self.heatmap_url, data=self._payload(hours=50, interval_miles=None), format="json")
 
         self.assertEqual(response.status_code, 400)
 

@@ -77,7 +77,7 @@ function App() {
     setHeatmapLoading(true)
     setHeatmapError('')
 
-    heatmap({ ...payload, hours: 48 }, { signal: controller.signal })
+    heatmap({ ...payload, hours: 49 }, { signal: controller.signal })
       .then((data) => {
         if (heatmapRequestRef.current.requestId !== requestId) {
           return
