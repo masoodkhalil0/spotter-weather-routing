@@ -3,9 +3,12 @@ import { timezone as lookupTimezone } from '../api/client'
 import PlaceSearch from './PlaceSearch'
 import DatePicker from './DatePicker'
 import TimePicker from './TimePicker'
-import { formatNaiveDeparture, getTimeZoneAbbreviation, isDepartureOutsideAllowedWindow } from '../utils/timezone'
-
-const TEN_DAYS_IN_MS = 10 * 24 * 60 * 60 * 1000
+import {
+  formatNaiveDeparture,
+  getTimeZoneAbbreviation,
+  isDepartureOutsideAllowedWindow,
+  MAX_DEPARTURE_WINDOW_MS,
+} from '../utils/timezone'
 
 function padNumber(value) {
   return String(value).padStart(2, '0')
@@ -17,7 +20,7 @@ function formatDateInputValue(date) {
 
 function getDateRange() {
   const today = new Date()
-  const maxDate = new Date(today.getTime() + TEN_DAYS_IN_MS)
+  const maxDate = new Date(today.getTime() + MAX_DEPARTURE_WINDOW_MS)
 
   return {
     minDate: formatDateInputValue(today),

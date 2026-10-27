@@ -10,6 +10,9 @@ const timePartFormatter = new Intl.DateTimeFormat('en-GB', {
   hour12: false,
 })
 
+export const MAX_DEPARTURE_DAYS = 10
+export const MAX_DEPARTURE_WINDOW_MS = MAX_DEPARTURE_DAYS * 24 * 60 * 60 * 1000
+
 function normalizePart(parts, type) {
   return parts.find((part) => part.type === type)?.value || ''
 }
@@ -44,7 +47,7 @@ export function isDepartureOutsideAllowedWindow(dateValue, timeValue, timeZone, 
   if (!timeZone) {
     const departureDate = new Date(`${dateValue}T${timeValue}`)
     const minDate = new Date(now.getTime() - 60 * 60 * 1000)
-    const maxDate = new Date(now.getTime() + 10 * 24 * 60 * 60 * 1000)
+    const maxDate = new Date(now.getTime() + MAX_DEPARTURE_WINDOW_MS)
 
     if (Number.isNaN(departureDate.getTime())) {
       return true
@@ -54,7 +57,7 @@ export function isDepartureOutsideAllowedWindow(dateValue, timeValue, timeZone, 
   }
 
   const minAllowed = new Date(now.getTime() - 60 * 60 * 1000)
-  const maxAllowed = new Date(now.getTime() + 10 * 24 * 60 * 60 * 1000)
+  const maxAllowed = new Date(now.getTime() + MAX_DEPARTURE_WINDOW_MS)
   const minParts = getWallTimeParts(minAllowed, timeZone)
   const maxParts = getWallTimeParts(maxAllowed, timeZone)
 
